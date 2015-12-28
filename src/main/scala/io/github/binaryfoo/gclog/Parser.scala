@@ -27,7 +27,8 @@ object Parser {
   val GenerationStats = ("[" ~ GenerationName.! ~ ": " ~ SizeStats ~ "]").map {
     case (name, delta) => GenerationDelta(name, delta)
   }
-  val collectionStats = "[" ~ "Full GC".! ~ " " ~ (GenerationStats | SizeStats).rep(sep = " ") ~ ", " ~ Seconds ~ " secs]"
+  val GcType = StringIn("Full GC", "GC--")
+  val collectionStats = "[" ~ GcType.! ~ " " ~ (GenerationStats | SizeStats).rep(sep = " ") ~ ", " ~ Seconds ~ " secs]"
 
   val gcLine = (Timestamp ~ ": " ~ Seconds ~ ": " ~ collectionStats).map {
     case (timestamp, elapsed, (gcType, collections, pause)) =>
