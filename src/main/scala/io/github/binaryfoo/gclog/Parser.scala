@@ -23,19 +23,27 @@ object Parser {
     case (start, end, capacity) => SizeDelta(start, end, capacity)
   }
 
-  val ignored = "\nDesired" ~ CharsWhile(_ != '\n') ~ "\n"
+  val IgnoredLine = CharsWhile(_ != '\n') ~ "\n"
+  val Ignored = "\nDesired" ~ IgnoredLine
 
   val GenerationName = CharIn('a' to 'z', 'A' to 'Z').rep
   val GenerationStats = ("[" ~ GenerationName.! ~ ": " ~ SizeStats ~ "]").map {
     case (name, delta) => GenerationDelta(name, delta)
   }
   val GcType = StringIn("Full GC", "GC--", "GC")
-  val collectionStats = "[" ~ GcType.! ~ ignored.? ~ " " ~ (GenerationStats | SizeStats).rep(sep = " ") ~ ", " ~ Seconds ~ " secs]"
+  val collectionStats = "[" ~ GcType.! ~ Ignored.? ~ " " ~ (GenerationStats | SizeStats).rep(sep = " ") ~ ", " ~ Seconds ~ " secs]"
 
   val gcLine = (Timestamp ~ ": " ~ Seconds ~ ": " ~ collectionStats).map {
     case (timestamp, elapsed, (gcType, collections, pause)) =>
       val heapDelta = collections.collectFirst { case heap: SizeDelta => heap }.get
       val generationDeltas = collections.collect { case generation: GenerationDelta => generation }
       GCEvent(timestamp, gcType, heapDelta, generationDeltas, pause)
+  }
+
+  val gcLog = (gcLine | IgnoredLine).rep
+
+  def parseLog(log: String): Seq[GCEvent] = {
+    val Parsed.Success(value, _) = gcLog.parse(log)
+    value.collect { case e: GCEvent => e }
   }
 }

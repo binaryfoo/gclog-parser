@@ -1,5 +1,8 @@
 package io.github.binaryfoo.gclog
 
+import java.io.File
+import java.nio.file.Files
+
 import fastparse.all._
 import io.github.binaryfoo.gclog.Parser._
 import org.joda.time.{DateTime, DateTimeZone}
@@ -55,5 +58,16 @@ class ParserTest extends FlatSpec with Matchers {
     value.heapDelta shouldBe SizeDelta("3440993K", "2372792K", "4056704K")
     value.generationDeltas shouldBe Seq(GenerationDelta("PSYoungGen", SizeDelta("1220800K", "88639K", "1260480K")))
     value.pauseSeconds shouldBe 0.110406
+  }
+
+  "Multiple events" should "be parsed" in {
+    val input = new String(Files.readAllBytes(new File("src/test/resources/fragment.txt").toPath))
+
+    val events = Parser.parseLog(input)
+    events(0).time shouldBe new DateTime(2015, 12, 10, 15, 46, 54, 299, Plus11)
+    events(0).gcType shouldBe "GC"
+
+    events(1).time shouldBe new DateTime(2015, 12, 10, 15, 46, 54, 493, Plus11)
+    events(1).gcType shouldBe "Full GC"
   }
 }
