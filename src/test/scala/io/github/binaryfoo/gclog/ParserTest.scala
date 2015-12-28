@@ -70,8 +70,9 @@ class ParserTest extends FlatSpec with Matchers {
     events(1).gcType shouldBe "Full GC"
   }
 
-  def testInput(fileName: String): String = {
-    new Predef.String(Files.readAllBytes(new File(s"src/test/resources/$fileName").toPath))
+  "GC cause" should "be parsed" in {
+    val Parsed.Success(value, _) = gcLine.parse("0.235: [GC (Allocation Failure)  65536K->57255K(251392K), 0.0222615 secs]")
+    value.gcCause shouldBe "Allocation Failure"
   }
 
   "Basic jdk7 log" should "be parsed" in {
@@ -83,4 +84,19 @@ class ParserTest extends FlatSpec with Matchers {
     events(6).jvmAgeSeconds shouldBe 2.832
     events(6).pauseSeconds shouldBe 0.022377
   }
+
+  "Basic jdk8 log" should "be parsed" in {
+    val events = Parser.parseLog(testInput("basic-java8-gc.log"))
+    events.size shouldBe 7
+
+    events(0).jvmAgeSeconds shouldBe 0.235
+    events(0).pauseSeconds shouldBe 0.0222615
+    events(6).jvmAgeSeconds shouldBe 2.232
+    events(6).pauseSeconds shouldBe 0.0209706
+  }
+
+  def testInput(fileName: String): String = {
+    new Predef.String(Files.readAllBytes(new File(s"src/test/resources/$fileName").toPath))
+  }
+
 }

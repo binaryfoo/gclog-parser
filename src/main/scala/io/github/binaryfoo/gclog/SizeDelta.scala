@@ -5,6 +5,7 @@ import org.joda.time.DateTime
 case class GCEvent(time: DateTime,
                    jvmAgeSeconds: Double,
                    gcType: String,
+                   gcCause: String,
                    heapDelta: SizeDelta,
                    generationDeltas: Seq[GenerationDelta],
                    pauseSeconds: Double)

@@ -31,13 +31,14 @@ object Parser {
     case (name, delta) => GenerationDelta(name, delta)
   }
   val GcType = StringIn("Full GC", "GC--", "GC")
-  val collectionStats = "[" ~ GcType.! ~ Ignored.? ~ " " ~ (GenerationStats | SizeStats).rep(sep = " ") ~ ", " ~ Seconds ~ " secs]"
+  val GcCause = " (" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ") "
+  val collectionStats = "[" ~ GcType.! ~ GcCause.? ~ Ignored.? ~ " " ~ (GenerationStats | SizeStats).rep(sep = " ") ~ ", " ~ Seconds ~ " secs]"
 
   val gcLine = ((Timestamp ~ ": ").? ~ Seconds ~ ": " ~ collectionStats).map {
-    case (timestamp, jvmAge, (gcType, collections, pause)) =>
+    case (timestamp, jvmAge, (gcType, gcCause, collections, pause)) =>
       val heapDelta = collections.collectFirst { case heap: SizeDelta => heap }.get
       val generationDeltas = collections.collect { case generation: GenerationDelta => generation }
-      GCEvent(timestamp.orNull, jvmAge, gcType, heapDelta, generationDeltas, pause)
+      GCEvent(timestamp.orNull, jvmAge, gcType, gcCause.orNull, heapDelta, generationDeltas, pause)
   }
 
   val gcLog = (gcLine | IgnoredLine).rep
