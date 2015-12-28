@@ -2,6 +2,8 @@ package io.github.binaryfoo.gclog
 
 import scala.collection.mutable
 
+import SuffixExpander.toBytes
+
 object ToTsv {
 
   def main(args: Array[String]): Unit = {
@@ -14,9 +16,9 @@ object ToTsv {
       val line = Seq(
         e.time.toString("yyyy-MM-dd HH:mm:ss.SSS"),
         e.pauseSeconds,
-        e.heapDelta.start,
-        e.heapDelta.end,
-        e.heapDelta.capacity,
+        toBytes(e.heapDelta.start),
+        toBytes(e.heapDelta.end),
+        toBytes(e.heapDelta.capacity),
         e.gcType
       )
       w.println(line.mkString("\t"))
