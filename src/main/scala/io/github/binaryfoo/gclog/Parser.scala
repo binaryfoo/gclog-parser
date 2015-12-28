@@ -23,12 +23,14 @@ object Parser {
     case (start, end, capacity) => SizeDelta(start, end, capacity)
   }
 
+  val ignored = "\nDesired" ~ CharsWhile(_ != '\n') ~ "\n"
+
   val GenerationName = CharIn('a' to 'z', 'A' to 'Z').rep
   val GenerationStats = ("[" ~ GenerationName.! ~ ": " ~ SizeStats ~ "]").map {
     case (name, delta) => GenerationDelta(name, delta)
   }
-  val GcType = StringIn("Full GC", "GC--")
-  val collectionStats = "[" ~ GcType.! ~ " " ~ (GenerationStats | SizeStats).rep(sep = " ") ~ ", " ~ Seconds ~ " secs]"
+  val GcType = StringIn("Full GC", "GC--", "GC")
+  val collectionStats = "[" ~ GcType.! ~ ignored.? ~ " " ~ (GenerationStats | SizeStats).rep(sep = " ") ~ ", " ~ Seconds ~ " secs]"
 
   val gcLine = (Timestamp ~ ": " ~ Seconds ~ ": " ~ collectionStats).map {
     case (timestamp, elapsed, (gcType, collections, pause)) =>
