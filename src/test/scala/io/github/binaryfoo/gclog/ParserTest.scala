@@ -75,6 +75,16 @@ class ParserTest extends FlatSpec with Matchers {
     value.gcCause shouldBe "Allocation Failure"
   }
 
+  "GC cause with details" should "be parsed" in {
+    val Parsed.Success(value, _) = gcLine.parse("2015-12-28T13:50:37.116-1000: 0.251: [GC (Allocation Failure) [PSYoungGen: 65536K->10736K(76288K)] 65536K->57253K(251392K), 0.0217970 secs] [Times: user=0.09 sys=0.06, real=0.02 secs]")
+    value.gcCause shouldBe "Allocation Failure"
+  }
+
+  "Metaspace sizing" should "be parsed" in {
+    val Parsed.Success(value, _) = gcLine.parse("2015-12-28T13:50:37.214-1000: 0.349: [Full GC (Ergonomics) [PSYoungGen: 10720K->0K(141824K)] [ParOldGen: 109101K->117471K(290816K)] 119821K->117471K(432640K), [Metaspace: 4082K->4082K(1056768K)], 0.2284721 secs] [Times: user=1.42 sys=0.02, real=0.23 secs]")
+    value.generationDeltas.collectFirst { case d: GenerationDelta if d.name == "Metaspace" => d }.get shouldBe GenerationDelta("Metaspace", SizeDelta("4082K", "4082K", "1056768K"))
+  }
+
   "Basic jdk7 log" should "be parsed" in {
     val events = Parser.parseLog(testInput("basic-java7-gc.log"))
     events.size shouldBe 7
@@ -85,6 +95,11 @@ class ParserTest extends FlatSpec with Matchers {
     events(6).pauseSeconds shouldBe 0.022377
   }
 
+  "Detailed jdk7 log" should "be parsed" in {
+    val events = Parser.parseLog(testInput("details-java7-gc.log"))
+    events.size shouldBe 7
+  }
+
   "Basic jdk8 log" should "be parsed" in {
     val events = Parser.parseLog(testInput("basic-java8-gc.log"))
     events.size shouldBe 7
@@ -93,6 +108,11 @@ class ParserTest extends FlatSpec with Matchers {
     events(0).pauseSeconds shouldBe 0.0222615
     events(6).jvmAgeSeconds shouldBe 2.232
     events(6).pauseSeconds shouldBe 0.0209706
+  }
+
+  "Detailed jdk8 log" should "be parsed" in {
+    val events = Parser.parseLog(testInput("details-java8-gc.log"))
+    events.size shouldBe 7
   }
 
   def testInput(fileName: String): String = {

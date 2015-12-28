@@ -32,7 +32,7 @@ object Parser {
   }
   val GcType = StringIn("Full GC", "GC--", "GC")
   val GcCause = " (" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ") "
-  val collectionStats = "[" ~ GcType.! ~ GcCause.? ~ Ignored.? ~ " " ~ (GenerationStats | SizeStats).rep(sep = " ") ~ ", " ~ Seconds ~ " secs]"
+  val collectionStats = "[" ~ GcType.! ~ GcCause.? ~ Ignored.? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = StringIn(" ", ", ")) ~ ", " ~ Seconds ~ " secs]"
 
   val gcLine = ((Timestamp ~ ": ").? ~ Seconds ~ ": " ~ collectionStats).map {
     case (timestamp, jvmAge, (gcType, gcCause, collections, pause)) =>
