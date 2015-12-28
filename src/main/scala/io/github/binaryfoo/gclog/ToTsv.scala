@@ -1,13 +1,11 @@
 package io.github.binaryfoo.gclog
 
-import scala.collection.mutable
-
-import SuffixExpander.toBytes
+import io.github.binaryfoo.gclog.SuffixExpander.toBytes
 
 object ToTsv {
 
   def main(args: Array[String]): Unit = {
-    val input = readAllInput()
+    val input = StdIn.readAllInput()
     val events = Parser.parseLog(input)
 
     val w = Console.out
@@ -26,15 +24,4 @@ object ToTsv {
     w.flush()
   }
 
-  private def readAllInput(): String = {
-    val buffer = mutable.ArrayBuffer[String]()
-    while (true) {
-      val line = Console.in.readLine()
-      if (line == null) {
-        return buffer.mkString("\n")
-      }
-      buffer += line
-    }
-    buffer.mkString("\n")
-  }
 }
