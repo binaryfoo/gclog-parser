@@ -100,6 +100,12 @@ class ParserTest extends FlatSpec with Matchers {
     events.size shouldBe 7
   }
 
+  "Jdk7 log with heap stats" should "be parsed" in {
+    val events = Parser.parseLog(testInput("heap-java7-gc.log"))
+    events.size shouldBe 7
+    events.last.jvmAgeSeconds shouldBe 2.86
+  }
+
   "Basic jdk8 log" should "be parsed" in {
     val events = Parser.parseLog(testInput("basic-java8-gc.log"))
     events.size shouldBe 7
@@ -113,6 +119,12 @@ class ParserTest extends FlatSpec with Matchers {
   "Detailed jdk8 log" should "be parsed" in {
     val events = Parser.parseLog(testInput("details-java8-gc.log"))
     events.size shouldBe 7
+  }
+
+  "Jdk8 log with heap stats" should "be parsed" in {
+    val events = Parser.parseLog(testInput("heap-java8-gc.log"))
+    events.size shouldBe 7
+    events.last.jvmAgeSeconds shouldBe 2.198
   }
 
   def testInput(fileName: String): String = {
