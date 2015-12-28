@@ -128,7 +128,7 @@ class ParserTest extends FlatSpec with Matchers {
   }
 
   def testInput(fileName: String): String = {
-    new Predef.String(Files.readAllBytes(new File(s"src/test/resources/$fileName").toPath))
+    new String(Files.readAllBytes(new File(s"src/test/resources/$fileName").toPath))
   }
 
 }
