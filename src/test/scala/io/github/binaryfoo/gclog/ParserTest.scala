@@ -17,6 +17,7 @@ class ParserTest extends FlatSpec with Matchers {
 
     val Parsed.Success(value, _) = gcLine.parse(line)
     value.time shouldBe new DateTime(2015, 12, 4, 16, 7, 12, 422, Plus11)
+    value.jvmAgeSeconds shouldBe 6994.482
     value.gcType shouldBe "Full GC"
     value.heapDelta shouldBe SizeDelta("2802498K", "1802287K", "4172672K")
     value.pauseSeconds shouldBe 3.823238
@@ -61,13 +62,25 @@ class ParserTest extends FlatSpec with Matchers {
   }
 
   "Multiple events" should "be parsed" in {
-    val input = new String(Files.readAllBytes(new File("src/test/resources/fragment.txt").toPath))
-
-    val events = Parser.parseLog(input)
+    val events = Parser.parseLog(testInput("fragment.txt"))
     events(0).time shouldBe new DateTime(2015, 12, 10, 15, 46, 54, 299, Plus11)
     events(0).gcType shouldBe "GC"
 
     events(1).time shouldBe new DateTime(2015, 12, 10, 15, 46, 54, 493, Plus11)
     events(1).gcType shouldBe "Full GC"
+  }
+
+  def testInput(fileName: String): String = {
+    new Predef.String(Files.readAllBytes(new File(s"src/test/resources/$fileName").toPath))
+  }
+
+  "Basic jdk7 log" should "be parsed" in {
+    val events = Parser.parseLog(testInput("basic-java7-gc.log"))
+    events.size shouldBe 7
+
+    events(0).jvmAgeSeconds shouldBe 0.263
+    events(0).pauseSeconds shouldBe 0.022292
+    events(6).jvmAgeSeconds shouldBe 2.832
+    events(6).pauseSeconds shouldBe 0.022377
   }
 }
