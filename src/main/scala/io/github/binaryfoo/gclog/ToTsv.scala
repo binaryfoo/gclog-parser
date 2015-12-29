@@ -11,8 +11,13 @@ object ToTsv {
     val w = Console.out
     w.println("time\tpause\theapBefore\theapAfter\theapMax\ttype")
     events.foreach { e =>
+      val time = if (e.time != null) {
+        e.time.toString("yyyy-MM-dd HH:mm:ss.SSS")
+      } else {
+        e.jvmAgeSeconds.toString
+      }
       val line = Seq(
-        e.time.toString("yyyy-MM-dd HH:mm:ss.SSS"),
+        time,
         e.pauseSeconds,
         toBytes(e.heapDelta.start),
         toBytes(e.heapDelta.end),

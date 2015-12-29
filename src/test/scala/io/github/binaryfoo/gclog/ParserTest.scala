@@ -127,6 +127,27 @@ class ParserTest extends FlatSpec with Matchers {
     events.last.jvmAgeSeconds shouldBe 2.198
   }
 
+  "ParNew with -XX:+PrintTenuringDistribution" should "be parsed" in {
+    val input = """7.524: [GC (Allocation Failure) 7.524: [ParNew
+      |Desired survivor size 53673984 bytes, new threshold 6 (max 6)
+      |- age   1:    5714984 bytes,    5714984 total
+      |: 838848K->5616K(943680K), 0.0118666 secs] 838848K->5616K(943744K), 0.0119520 secs] [Times: user=0.01 sys=0.01, real=0.01 secs]
+      |""".stripMargin
+
+    val events = Parser.parseLog(input)
+    events.head.jvmAgeSeconds shouldBe 7.524
+    events.head.pauseSeconds shouldBe 0.011952
+  }
+
+  "CMS Full GC" should "be parsed" in {
+    val input = """29517.100: [Full GC (Allocation Failure) 29517.100: [CMS: 819199K->819199K(819200K), 3.2809595 secs] 1762879K->1762879K(1762880K), [Metaspace: 21995K->21995K(1069056K)], 3.2810538 secs] [Times: user=3.28 sys=0.00, real=3.28 secs]"""
+
+    val events = Parser.parseLog(input)
+    events.head.jvmAgeSeconds shouldBe 29517.1
+    events.head.pauseSeconds shouldBe 3.2810538
+    events.head.generationDeltas.head shouldBe GenerationDelta("CMS", SizeDelta("819199K", "819199K", "819200K"))
+  }
+
   def testInput(fileName: String): String = {
     new String(Files.readAllBytes(new File(s"src/test/resources/$fileName").toPath))
   }

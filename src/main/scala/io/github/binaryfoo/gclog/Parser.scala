@@ -15,7 +15,8 @@ object Parser {
   val timezone = ("+" | "-") ~ digit.rep(4)
   val Timestamp = (yyyyMMdd ~ "T" ~ hhMMssSSS ~ timezone).!.map(TimestampFormat.parseDateTime)
 
-  val Seconds = (digit.rep ~ "." ~ digit.rep).!.map(_.toDouble)
+  val Number = digit.rep ~ "." ~ digit.rep
+  val Seconds = Number.!.map(_.toDouble)
 
   val multiplier = CharIn(Seq('K', 'M'))
   val Size = digit.rep ~ multiplier
@@ -24,15 +25,15 @@ object Parser {
   }
 
   val IgnoredLine = CharsWhile(_ != '\n').? ~ "\n"
-  val Ignored = "\nDesired" ~ IgnoredLine
+  val Ignored = ("\nDesired" ~ IgnoredLine) | ("- age" ~ IgnoredLine)
 
   val GenerationName = CharIn('a' to 'z', 'A' to 'Z').rep
-  val GenerationStats = ("[" ~ GenerationName.! ~ ": " ~ SizeStats ~ "]").map {
+  val GenerationStats = ("[" ~ GenerationName.! ~ Ignored.rep.? ~ ": " ~ SizeStats ~ (", " ~ Number ~ " secs").? ~ "]").map {
     case (name, delta) => GenerationDelta(name, delta)
   }
   val GcType = StringIn("Full GC", "GC--", "GC")
   val GcCause = " (" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ") "
-  val collectionStats = "[" ~ GcType.! ~ GcCause.? ~ Ignored.? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = StringIn(" ", ", ")) ~ ", " ~ Seconds ~ " secs]"
+  val collectionStats = "[" ~ GcType.! ~ GcCause.? ~ (Number ~ ": ").? ~ Ignored.? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = StringIn(" ", ", ")) ~ ", " ~ Seconds ~ " secs]"
 
   val gcLine = ((Timestamp ~ ": ").? ~ Seconds ~ ": " ~ collectionStats).map {
     case (timestamp, jvmAge, (gcType, gcCause, collections, pause)) =>
