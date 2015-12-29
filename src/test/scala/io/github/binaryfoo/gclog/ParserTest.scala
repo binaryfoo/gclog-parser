@@ -148,6 +148,51 @@ class ParserTest extends FlatSpec with Matchers {
     events.head.generationDeltas.head shouldBe GenerationDelta("CMS", SizeDelta("819199K", "819199K", "819200K"))
   }
 
+  "ParOldGen heap region" should "be parsed" in {
+    val input = """ ParOldGen       total 2796224K, used 2590524K [0x0000000700000000, 0x00000007aaab0000, 0x00000007aaab0000)
+      |  object space 2796224K, 92% used [0x0000000700000000,0x000000079e1cf2a8,0x00000007aaab0000)
+      |""".stripMargin
+
+    val Parsed.Success(value, _) = HeapStat.parse(input)
+    value.name shouldBe "ParOldGen"
+    value.capacity shouldBe "2796224K"
+    value.used shouldBe "2590524K"
+    value.subspaces shouldBe empty
+  }
+
+  "PSYoungGen heap region" should "be parsed" in {
+    val input = """ PSYoungGen      total 1070400K, used 1070376K [0x00000007aaab0000, 0x0000000800000000, 0x0000000800000000)
+                  |  eden space 910272K, 100% used [0x00000007aaab0000,0x00000007e23a0000,0x00000007e23a0000)
+                  |  from space 160128K, 99% used [0x00000007e23a0000,0x00000007ebffa2f8,0x00000007ec000000)
+                  |  to   space 254848K, 0% used [0x00000007f0720000,0x00000007f0720000,0x0000000800000000)
+                  |""".stripMargin
+
+    val Parsed.Success(value, _) = HeapStat.parse(input)
+    value.name shouldBe "PSYoungGen"
+    value.capacity shouldBe "1070400K"
+    value.used shouldBe "1070376K"
+    value.subspaces(0).name shouldBe "eden"
+    value.subspaces(0).capacity shouldBe "910272K"
+    value.subspaces(0).used shouldBe "100%"
+    value.subspaces(1).name shouldBe "from"
+    value.subspaces(1).capacity shouldBe "160128K"
+    value.subspaces(1).used shouldBe "99%"
+    value.subspaces(2).name shouldBe "to"
+    value.subspaces(2).capacity shouldBe "254848K"
+    value.subspaces(2).used shouldBe "0%"
+  }
+
+  "Heap statistics" should "be parseable" in {
+    val events = Parser.parseWithHeapStats(testInput("fragment.txt"))
+    events.size shouldBe 2
+    events(0).regions.mkString("\n") shouldBe """RegionDelta(PSYoungGen,1070376K,76319K,1070400K,1155840K)
+                                                |RegionDelta(eden,100%,0%,910272K,900992K)
+                                                |RegionDelta(from,99%,29%,160128K,254848K)
+                                                |RegionDelta(to,0%,0%,254848K,242240K)
+                                                |RegionDelta(ParOldGen,2590524K,2731841K,2796224K,2796224K)
+                                                |RegionDelta(PSPermGen,67601K,67601K,67648K,67648K)""".stripMargin
+  }
+
   def testInput(fileName: String): String = {
     new String(Files.readAllBytes(new File(s"src/test/resources/$fileName").toPath))
   }

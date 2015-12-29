@@ -7,8 +7,6 @@ object Parser {
 
   val TimestampFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ").withOffsetParsed()
 
-  val NotEndBracket = CharsWhile(_ != ']')
-
   val digit = P(CharIn('0' to '9'))
   val yyyyMMdd = digit.rep(4) ~ "-" ~ digit.rep(2) ~ "-" ~ digit.rep(2)
   val hhMMssSSS = digit.rep(2) ~ ":" ~ digit.rep(2) ~ ":" ~ digit.rep(2) ~ "." ~ digit.rep(3)
@@ -44,8 +42,43 @@ object Parser {
 
   val gcLog = (gcLine | IgnoredLine).rep
 
+  val Space = " ".rep
+  val HeapRegionSubSpace = Space ~ GenerationName.! ~ Space ~ "space" ~ Space ~ Size.! ~ ", " ~ (digit.rep ~ "%").! ~ " used" ~ IgnoredLine
+  val HeapRegionSubSpaces = HeapRegionSubSpace.map {
+    case (name, capacity, used) => HeapRegion(name, capacity, used)
+  }.rep
+  val HeapStat = (Space ~ GenerationName.! ~ Space ~ "total " ~ Size.! ~ ", used " ~ Size.! ~ IgnoredLine ~ HeapRegionSubSpaces).map {
+    case (name, total, used, subSpaces) =>
+      val interesting = subSpaces.collect {
+        case r@HeapRegion(subspace, c, u, _) if subspace != "object" => r
+      }
+      HeapRegion(name, total, used, interesting)
+  }
+  private def heapDetails(when: String) = "Heap " ~ when ~ IgnoredLine ~ HeapStat.rep
+  val DetailedEvent = "{" ~ heapDetails("before") ~ gcLine ~ IgnoredLine.? ~ heapDetails("after") ~ "}"
+
   def parseLog(log: String): Seq[GCEvent] = {
     val Parsed.Success(value, _) = gcLog.parse(log)
     value.collect { case e: GCEvent => e }
+  }
+
+  /**
+    * Use to parse data written when -XX:+PrintHeapAtGC option is passed to the JVM.
+    */
+  def parseWithHeapStats(log: String): Seq[DetailedGCEvent] = {
+    val Parsed.Success(value, _) = (DetailedEvent | IgnoredLine).rep.parse(log)
+    value.collect {
+      case (before: Seq[HeapRegion], e: GCEvent, after: Seq[HeapRegion]) =>
+        val deltas = before.zip(after)
+          .flatMap {
+            case (b, a) =>
+              Seq((b, a)) ++ b.subspaces.zip(a.subspaces)
+          }
+          .map {
+          case (b, a) if b.name == a.name =>
+            RegionDelta(b.name, b.used, a.used, b.capacity, a.capacity)
+        }
+        DetailedGCEvent(e, deltas)
+    }
   }
 }
