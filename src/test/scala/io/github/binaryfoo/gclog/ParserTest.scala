@@ -15,7 +15,7 @@ class ParserTest extends FlatSpec with Matchers {
   "Full GC" should "be parsed" in {
     val line = """2015-12-04T16:07:12.422+1100: 6994.482: [Full GC [PSYoungGen: 14194K->0K(1376448K)] [ParOldGen: 2788303K->1802287K(2796224K)] 2802498K->1802287K(4172672K) [PSPermGen: 66560K->66131K(132736K)], 3.8232380 secs] [Times: user=10.81 sys=0.06, real=3.83 secs]"""
 
-    val Parsed.Success(value, _) = gcLine.parse(line)
+    val Parsed.Success(value, _) = GcLine.parse(line)
     value.time shouldBe new DateTime(2015, 12, 4, 16, 7, 12, 422, Plus11)
     value.jvmAgeSeconds shouldBe 6994.482
     value.gcType shouldBe "Full GC"
@@ -43,7 +43,7 @@ class ParserTest extends FlatSpec with Matchers {
   "Promotion failure" should "be parsed" in {
     val line = """2015-12-10T15:42:08.076+1100: 523890.136: [GC-- [PSYoungGen: 1275256K->1275256K(1275264K)] 4007798K->4071477K(4071488K), 0.3913740 secs] [Times: user=0.54 sys=0.00, real=0.39 secs]"""
 
-    val Parsed.Success(value, _) = gcLine.parse(line)
+    val Parsed.Success(value, _) = GcLine.parse(line)
     value.gcType shouldBe "GC--"
     value.pauseSeconds shouldBe 0.391374
   }
@@ -54,7 +54,7 @@ class ParserTest extends FlatSpec with Matchers {
       | [PSYoungGen: 1220800K->88639K(1260480K)] 3440993K->2372792K(4056704K), 0.1104060 secs] [Times: user=0.24 sys=0.01, real=0.12 secs]
       |""".stripMargin
 
-    val Parsed.Success(value, _) = gcLine.parse(lines)
+    val Parsed.Success(value, _) = GcLine.parse(lines)
     value.time shouldBe new DateTime(2015, 12, 10, 15, 43, 18, 274, Plus11)
     value.heapDelta shouldBe SizeDelta("3440993K", "2372792K", "4056704K")
     value.generationDeltas shouldBe Seq(GenerationDelta("PSYoungGen", SizeDelta("1220800K", "88639K", "1260480K")))
@@ -71,17 +71,17 @@ class ParserTest extends FlatSpec with Matchers {
   }
 
   "GC cause" should "be parsed" in {
-    val Parsed.Success(value, _) = gcLine.parse("0.235: [GC (Allocation Failure)  65536K->57255K(251392K), 0.0222615 secs]")
+    val Parsed.Success(value, _) = GcLine.parse("0.235: [GC (Allocation Failure)  65536K->57255K(251392K), 0.0222615 secs]")
     value.gcCause shouldBe "Allocation Failure"
   }
 
   "GC cause with details" should "be parsed" in {
-    val Parsed.Success(value, _) = gcLine.parse("2015-12-28T13:50:37.116-1000: 0.251: [GC (Allocation Failure) [PSYoungGen: 65536K->10736K(76288K)] 65536K->57253K(251392K), 0.0217970 secs] [Times: user=0.09 sys=0.06, real=0.02 secs]")
+    val Parsed.Success(value, _) = GcLine.parse("2015-12-28T13:50:37.116-1000: 0.251: [GC (Allocation Failure) [PSYoungGen: 65536K->10736K(76288K)] 65536K->57253K(251392K), 0.0217970 secs] [Times: user=0.09 sys=0.06, real=0.02 secs]")
     value.gcCause shouldBe "Allocation Failure"
   }
 
   "Metaspace sizing" should "be parsed" in {
-    val Parsed.Success(value, _) = gcLine.parse("2015-12-28T13:50:37.214-1000: 0.349: [Full GC (Ergonomics) [PSYoungGen: 10720K->0K(141824K)] [ParOldGen: 109101K->117471K(290816K)] 119821K->117471K(432640K), [Metaspace: 4082K->4082K(1056768K)], 0.2284721 secs] [Times: user=1.42 sys=0.02, real=0.23 secs]")
+    val Parsed.Success(value, _) = GcLine.parse("2015-12-28T13:50:37.214-1000: 0.349: [Full GC (Ergonomics) [PSYoungGen: 10720K->0K(141824K)] [ParOldGen: 109101K->117471K(290816K)] 119821K->117471K(432640K), [Metaspace: 4082K->4082K(1056768K)], 0.2284721 secs] [Times: user=1.42 sys=0.02, real=0.23 secs]")
     value.generationDeltas.collectFirst { case d: GenerationDelta if d.name == "Metaspace" => d }.get shouldBe GenerationDelta("Metaspace", SizeDelta("4082K", "4082K", "1056768K"))
   }
 

@@ -5,47 +5,45 @@ import org.joda.time.format.DateTimeFormat
 
 object Parser {
 
-  val TimestampFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ").withOffsetParsed()
+  private val TimestampFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ").withOffsetParsed()
+  private val Digit = CharIn('0' to '9')
+  private val YyyyMMdd = Digit.rep(4) ~ "-" ~ Digit.rep(2) ~ "-" ~ Digit.rep(2)
+  private val HhMMssSSS = Digit.rep(2) ~ ":" ~ Digit.rep(2) ~ ":" ~ Digit.rep(2) ~ "." ~ Digit.rep(3)
+  private val Timezone = ("+" | "-") ~ Digit.rep(4)
+  val Timestamp = (YyyyMMdd ~ "T" ~ HhMMssSSS ~ Timezone).!.map(TimestampFormat.parseDateTime)
 
-  val digit = P(CharIn('0' to '9'))
-  val yyyyMMdd = digit.rep(4) ~ "-" ~ digit.rep(2) ~ "-" ~ digit.rep(2)
-  val hhMMssSSS = digit.rep(2) ~ ":" ~ digit.rep(2) ~ ":" ~ digit.rep(2) ~ "." ~ digit.rep(3)
-  val timezone = ("+" | "-") ~ digit.rep(4)
-  val Timestamp = (yyyyMMdd ~ "T" ~ hhMMssSSS ~ timezone).!.map(TimestampFormat.parseDateTime)
-
-  val Number = digit.rep ~ "." ~ digit.rep
-  val Seconds = Number.!.map(_.toDouble)
-
-  val multiplier = CharIn(Seq('K', 'M'))
-  val Size = digit.rep ~ multiplier
+  private val Number = Digit.rep ~ "." ~ Digit.rep
+  private val Seconds = Number.!.map(_.toDouble)
+  private val Multiplier = CharIn(Seq('K', 'M'))
+  private val Size = Digit.rep ~ Multiplier
   val SizeStats = (Size.! ~ "->" ~ Size.! ~ "(" ~ Size.! ~ ")").map {
     case (start, end, capacity) => SizeDelta(start, end, capacity)
   }
 
-  val IgnoredLine = CharsWhile(_ != '\n').? ~ "\n"
-  val Ignored = ("\nDesired" ~ IgnoredLine) | ("- age" ~ IgnoredLine)
+  private val IgnoredLine = CharsWhile(_ != '\n').? ~ "\n"
+  private val Ignored = ("\nDesired" ~ IgnoredLine) | ("- age" ~ IgnoredLine)
 
-  val GenerationName = CharIn('a' to 'z', 'A' to 'Z').rep
+  private val GenerationName = CharIn('a' to 'z', 'A' to 'Z').rep
   val GenerationStats = ("[" ~ GenerationName.! ~ Ignored.rep.? ~ ": " ~ SizeStats ~ (", " ~ Number ~ " secs").? ~ "]").map {
     case (name, delta) => GenerationDelta(name, delta)
   }
-  val GcType = StringIn("Full GC", "GC--", "GC")
-  val GcCause = " (" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ") "
-  val collectionStats = "[" ~ GcType.! ~ GcCause.? ~ (Number ~ ": ").? ~ Ignored.? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = StringIn(" ", ", ")) ~ ", " ~ Seconds ~ " secs]"
+  private val GcType = StringIn("Full GC", "GC--", "GC")
+  private val GcCause = " (" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ") "
+  private val CollectionStats = "[" ~ GcType.! ~ GcCause.? ~ (Number ~ ": ").? ~ Ignored.? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = StringIn(" ", ", ")) ~ ", " ~ Seconds ~ " secs]"
 
-  val gcLine = ((Timestamp ~ ": ").? ~ Seconds ~ ": " ~ collectionStats).map {
+  val GcLine = ((Timestamp ~ ": ").? ~ Seconds ~ ": " ~ CollectionStats).map {
     case (timestamp, jvmAge, (gcType, gcCause, collections, pause)) =>
       val heapDelta = collections.collectFirst { case heap: SizeDelta => heap }.get
       val generationDeltas = collections.collect { case generation: GenerationDelta => generation }
       GCEvent(timestamp.orNull, jvmAge, gcType, gcCause.orNull, heapDelta, generationDeltas, pause)
   }
 
-  val gcLog = (gcLine | IgnoredLine).rep
+  private val GcLog = (GcLine | IgnoredLine).rep
 
-  val Space = " ".rep
-  val RegionName = (CharIn('a' to 'z', 'A' to 'Z', '-' to '-', ' ' to ' ') ~ !("total"|"used")).rep.!.map(_.trim)
-  val HeapRegionSubSpace = Space ~ GenerationName.! ~ Space ~ "space" ~ Space ~ Size.! ~ "," ~ Space ~ (digit.rep ~ "%").! ~ " used" ~ IgnoredLine
-  val HeapRegionSubSpaces = HeapRegionSubSpace.map {
+  private val Space = " ".rep
+  private val RegionName = (CharIn('a' to 'z', 'A' to 'Z', '-' to '-', ' ' to ' ') ~ !("total"|"used")).rep.!.map(_.trim)
+  private val HeapRegionSubSpace = Space ~ GenerationName.! ~ Space ~ "space" ~ Space ~ Size.! ~ "," ~ Space ~ (Digit.rep ~ "%").! ~ " used" ~ IgnoredLine
+  private val HeapRegionSubSpaces = HeapRegionSubSpace.map {
     case (name, capacity, used) => HeapRegion(name, capacity, used)
   }.rep
   val HeapStat = (Space ~ RegionName ~ Space ~ "total " ~ Size.! ~ ", used " ~ Size.! ~ IgnoredLine ~ HeapRegionSubSpaces).map {
@@ -55,7 +53,7 @@ object Parser {
       }
       HeapRegion(name, total, used, interesting)
   }
-  val MetaspaceSubSpace = (Space ~ RegionName ~ Space ~ "used " ~ Size.! ~ ", capacity " ~ Size.! ~ IgnoredLine).map {
+  private val MetaspaceSubSpace = (Space ~ RegionName ~ Space ~ "used " ~ Size.! ~ ", capacity " ~ Size.! ~ IgnoredLine).map {
     case (name, used, capacity) => HeapRegion(name, capacity, used)
   }
   val MetaspaceStat = MetaspaceSubSpace.rep.filter(_.nonEmpty).map {
@@ -63,10 +61,10 @@ object Parser {
       spaces.head.copy(subspaces = spaces.tail)
   }
   private def heapDetails(when: String) = "Heap " ~ when ~ IgnoredLine ~ (HeapStat | MetaspaceStat).rep
-  val DetailedEvent = "{" ~ heapDetails("before") ~ gcLine ~ IgnoredLine.? ~ heapDetails("after") ~ "}"
+  private val DetailedEvent = "{" ~ heapDetails("before") ~ GcLine ~ IgnoredLine.? ~ heapDetails("after") ~ "}"
 
   def parseLog(log: String): Seq[GCEvent] = {
-    val Parsed.Success(value, _) = gcLog.parse(log)
+    val Parsed.Success(value, _) = GcLog.parse(log)
     value.collect { case e: GCEvent => e }
   }
 
