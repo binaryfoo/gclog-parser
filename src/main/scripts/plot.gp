@@ -9,7 +9,7 @@ set output 'example.svg'
 
 # to output png instead
 #set terminal pngcairo size 2280,960
-#set output 'gc-pain-se1.png'
+#set output 'example.png'
 
 set xdata time
 set timefmt '%Y-%m-%d %H:%M:%S'
