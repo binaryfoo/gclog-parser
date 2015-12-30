@@ -12,7 +12,7 @@ object Parser {
   private val Timezone = ("+" | "-") ~ Digit.rep(4)
   val Timestamp = (YyyyMMdd ~ "T" ~ HhMMssSSS ~ Timezone).!.map(TimestampFormat.parseDateTime)
 
-  private val Number = Digit.rep ~ "." ~ Digit.rep
+  private val Number = Digit.rep(1) ~ "." ~ Digit.rep
   private val Seconds = Number.!.map(_.toDouble)
   private val Multiplier = CharIn(Seq('K', 'M'))
   private val Size = Digit.rep ~ Multiplier
@@ -87,4 +87,22 @@ object Parser {
         DetailedGCEvent(e, deltas)
     }
   }
+
+  def incrementalParse(lines: String): IncrementalResult = {
+    GcLine.parse(lines) match {
+      case Parsed.Success(value, _) => GcEventParsed(value)
+      case Parsed.Failure(lastParser, index, _) =>
+        // heuristic: if we've matched at least half the first line assume we're gonna match
+        val halfwayMark = (lines.indexOf('\n') match {
+          case -1 => lines.length
+          case x => x
+        }) / 2
+        if (index <= halfwayMark ) SkipLine else NeedAnotherLine
+    }
+  }
 }
+
+sealed trait IncrementalResult
+object SkipLine extends IncrementalResult
+object NeedAnotherLine extends IncrementalResult
+case class GcEventParsed(event: GCEvent) extends IncrementalResult

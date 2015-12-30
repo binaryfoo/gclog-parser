@@ -241,7 +241,47 @@ class ParserTest extends FlatSpec with Matchers {
                                                 |RegionDelta(class space,1488K,1488K,1562K,1562K)""".stripMargin
   }
 
-  def testInput(fileName: String): String = {
+  "Incremental parse" should "prompt for more lines" in {
+    val lines = """29.538: [GC (Allocation Failure) 29.538: [ParNew
+      |Desired survivor size 53673984 bytes, new threshold 1 (max 6)
+      |- age   1:   93762072 bytes,   93762072 total
+      |: 907401K->104832K(943680K), 0.3764651 secs] 907401K->176460K(1017644K), 0.3765675 secs] [Times: user=0.91 sys=0.19, real=0.38 secs]
+      |""".stripMargin.split("\n")
+
+    incrementalParse(lines.take(1).mkString("\n")) shouldBe NeedAnotherLine
+    incrementalParse(lines.take(2).mkString("\n")) shouldBe NeedAnotherLine
+    incrementalParse(lines.take(3).mkString("\n")) shouldBe NeedAnotherLine
+    incrementalParse(lines.take(4).mkString("\n")) shouldBe a [GcEventParsed]
+  }
+
+  "Incremental parse" should "ignore unparseable lines" in {
+    val lines = """Total time for which application threads were stopped: 0.0132040 seconds
+                   |2015-12-04T16:07:12.422+1100: 6994.482: [Full GC [PSYoungGen: 14194K->0K(1376448K)] [ParOldGen: 2788303K->1802287K(2796224K)] 2802498K->1802287K(4172672K) [PSPermGen: 66560K->66131K(132736K)], 3.8232380 secs] [Times: user=10.81 sys=0.06, real=3.83 secs]
+                   |""".stripMargin.split("\n")
+
+    incrementalParse(lines.take(1).mkString("\n")) shouldBe SkipLine
+    incrementalParse(lines.slice(1, 2).mkString("\n")) shouldBe a [GcEventParsed]
+  }
+
+  "Incremental parse" should "ignore unparseable lines in face of matching prefix" in {
+    val lines = """28922.782: Total time for which application threads were stopped: 2.9031668 seconds, Stopping threads took: 0.0010975 seconds
+                   |28930.272: [Full GC (Allocation Failure) 28930.272: [CMS: 819200K->819199K(819200K), 3.1445149 secs] 1762880K->1289710K(1762880K), [Metaspace: 21984K->21984K(1069056K)], 3.1446281 secs] [Times: user=3.14 sys=0.00, real=3.14 secs]
+                   |""".stripMargin.split("\n")
+
+    incrementalParse(lines.take(1).mkString("\n")) shouldBe SkipLine
+    incrementalParse(lines.slice(1, 2).mkString("\n")) shouldBe a [GcEventParsed]
+  }
+
+  "Incremental parse" should "behave over multiple events" in {
+    val lines = testInput("fragment.txt").split("\n")
+
+    incrementalParse(lines.take(1).mkString("\n")) shouldBe SkipLine
+    incrementalParse(lines.slice(10, 13).mkString("\n")) shouldBe a [GcEventParsed]
+    incrementalParse(lines.slice(22, 23).mkString("\n")) shouldBe SkipLine
+    incrementalParse(lines.slice(33, 34).mkString("\n")) shouldBe a [GcEventParsed]
+  }
+
+  private def testInput(fileName: String): String = {
     new String(Files.readAllBytes(new File(s"src/test/resources/$fileName").toPath))
   }
 
