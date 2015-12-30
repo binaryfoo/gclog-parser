@@ -23,6 +23,28 @@ class ParserTest extends FlatSpec with Matchers {
     value.pauseSeconds shouldBe 3.823238
   }
 
+  "GCEvent" should "be convertible into a Map" in {
+    val line = """2015-12-04T16:07:12.422+1100: 6994.482: [Full GC [PSYoungGen: 14194K->0K(1376448K)] [ParOldGen: 2788303K->1802287K(2796224K)] 2802498K->1802287K(4172672K) [PSPermGen: 66560K->66131K(132736K)], 3.8232380 secs] [Times: user=10.81 sys=0.06, real=3.83 secs]"""
+
+    val Parsed.Success(value, _) = GcLine.parse(line)
+    value.toSeq.mkString("\n") shouldBe """(time,2015-12-04 16:07:12.422)
+                                          |(age,6994.482)
+                                          |(type,Full GC)
+                                          |(pause,3.823238)
+                                          |(heapBefore,2869757952)
+                                          |(heapAfter,1845541888)
+                                          |(heapMax,4272816128)
+                                          |(PSYoungGenBefore,14534656)
+                                          |(PSYoungGenAfter,0)
+                                          |(PSYoungGenMax,1409482752)
+                                          |(ParOldGenBefore,2855222272)
+                                          |(ParOldGenAfter,1845541888)
+                                          |(ParOldGenMax,2863333376)
+                                          |(PSPermGenBefore,68157440)
+                                          |(PSPermGenAfter,67718144)
+                                          |(PSPermGenMax,135921664)""".stripMargin
+  }
+
   "Timestamp" should "be parsed" in {
     val Parsed.Success(value, _) = Timestamp.parse("2015-12-04T16:07:12.422+1100")
 
