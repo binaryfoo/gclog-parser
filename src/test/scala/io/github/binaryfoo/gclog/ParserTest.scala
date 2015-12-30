@@ -148,6 +148,42 @@ class ParserTest extends FlatSpec with Matchers {
     events.head.generationDeltas.head shouldBe GenerationDelta("CMS", SizeDelta("819199K", "819199K", "819200K"))
   }
 
+  "CMS region" should "be parsed" in {
+    val input = "concurrent mark-sweep generation total 64K, used 0K [0x000000078e000000, 0x000000078e010000, 0x00000007c0000000)\n"
+
+    val Parsed.Success(value, _) = HeapStat.parse(input)
+    value.name shouldBe "concurrent mark-sweep generation"
+    value.capacity shouldBe "64K"
+    value.used shouldBe "0K"
+    value.subspaces shouldBe empty
+  }
+
+  "Metaspace region" should "be parsed" in {
+    val input = """ Metaspace       used 12441K, capacity 12616K, committed 12928K, reserved 1060864K
+                  |  class space    used 1488K, capacity 1562K, committed 1664K, reserved 1048576K
+                  |""".stripMargin
+
+    val Parsed.Success(value, _) = MetaspaceStat.parse(input)
+    value.name shouldBe "Metaspace"
+    value.capacity shouldBe "12616K"
+    value.used shouldBe "12441K"
+    value.subspaces shouldBe Seq(HeapRegion("class space", "1562K", "1488K"))
+  }
+
+  "par new region" should "be parsed" in {
+    val input = """ par new generation   total 943680K, used 5616K [0x000000072a000000, 0x0000000769ff0000, 0x000000078e000000)
+                  |  eden space 838848K,   0% used [0x000000072a000000, 0x000000072a000000, 0x000000075d330000)
+                  |  from space 104832K,   5% used [0x0000000763990000, 0x0000000763f0c180, 0x0000000769ff0000)
+                  |  to   space 104832K,   0% used [0x000000075d330000, 0x000000075d330000, 0x0000000763990000)
+                  |""".stripMargin
+
+    val Parsed.Success(value, _) = HeapStat.parse(input)
+    value.name shouldBe "par new generation"
+    value.capacity shouldBe "943680K"
+    value.used shouldBe "5616K"
+    value.subspaces.size shouldBe 3
+  }
+
   "ParOldGen heap region" should "be parsed" in {
     val input = """ ParOldGen       total 2796224K, used 2590524K [0x0000000700000000, 0x00000007aaab0000, 0x00000007aaab0000)
       |  object space 2796224K, 92% used [0x0000000700000000,0x000000079e1cf2a8,0x00000007aaab0000)
@@ -191,6 +227,18 @@ class ParserTest extends FlatSpec with Matchers {
                                                 |RegionDelta(to,0%,0%,254848K,242240K)
                                                 |RegionDelta(ParOldGen,2590524K,2731841K,2796224K,2796224K)
                                                 |RegionDelta(PSPermGen,67601K,67601K,67648K,67648K)""".stripMargin
+  }
+
+  "CMS heap statistics" should "be parseable" in {
+    val events = Parser.parseWithHeapStats(testInput("cms-fragment.txt"))
+    events.size shouldBe 1
+    events(0).regions.mkString("\n") shouldBe """RegionDelta(par new generation,838848K,5616K,943680K,943680K)
+                                                |RegionDelta(eden,100%,0%,838848K,838848K)
+                                                |RegionDelta(from,0%,5%,104832K,104832K)
+                                                |RegionDelta(to,0%,0%,104832K,104832K)
+                                                |RegionDelta(concurrent mark-sweep generation,0K,0K,64K,64K)
+                                                |RegionDelta(Metaspace,12441K,12441K,12616K,12616K)
+                                                |RegionDelta(class space,1488K,1488K,1562K,1562K)""".stripMargin
   }
 
   def testInput(fileName: String): String = {

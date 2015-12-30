@@ -43,18 +43,26 @@ object Parser {
   val gcLog = (gcLine | IgnoredLine).rep
 
   val Space = " ".rep
-  val HeapRegionSubSpace = Space ~ GenerationName.! ~ Space ~ "space" ~ Space ~ Size.! ~ ", " ~ (digit.rep ~ "%").! ~ " used" ~ IgnoredLine
+  val RegionName = (CharIn('a' to 'z', 'A' to 'Z', '-' to '-', ' ' to ' ') ~ !("total"|"used")).rep.!.map(_.trim)
+  val HeapRegionSubSpace = Space ~ GenerationName.! ~ Space ~ "space" ~ Space ~ Size.! ~ "," ~ Space ~ (digit.rep ~ "%").! ~ " used" ~ IgnoredLine
   val HeapRegionSubSpaces = HeapRegionSubSpace.map {
     case (name, capacity, used) => HeapRegion(name, capacity, used)
   }.rep
-  val HeapStat = (Space ~ GenerationName.! ~ Space ~ "total " ~ Size.! ~ ", used " ~ Size.! ~ IgnoredLine ~ HeapRegionSubSpaces).map {
+  val HeapStat = (Space ~ RegionName ~ Space ~ "total " ~ Size.! ~ ", used " ~ Size.! ~ IgnoredLine ~ HeapRegionSubSpaces).map {
     case (name, total, used, subSpaces) =>
       val interesting = subSpaces.collect {
         case r@HeapRegion(subspace, c, u, _) if subspace != "object" => r
       }
       HeapRegion(name, total, used, interesting)
   }
-  private def heapDetails(when: String) = "Heap " ~ when ~ IgnoredLine ~ HeapStat.rep
+  val MetaspaceSubSpace = (Space ~ RegionName ~ Space ~ "used " ~ Size.! ~ ", capacity " ~ Size.! ~ IgnoredLine).map {
+    case (name, used, capacity) => HeapRegion(name, capacity, used)
+  }
+  val MetaspaceStat = MetaspaceSubSpace.rep.filter(_.nonEmpty).map {
+    case spaces =>
+      spaces.head.copy(subspaces = spaces.tail)
+  }
+  private def heapDetails(when: String) = "Heap " ~ when ~ IgnoredLine ~ (HeapStat | MetaspaceStat).rep
   val DetailedEvent = "{" ~ heapDetails("before") ~ gcLine ~ IgnoredLine.? ~ heapDetails("after") ~ "}"
 
   def parseLog(log: String): Seq[GCEvent] = {
