@@ -15,7 +15,7 @@ case class BasicGCEvent(time: DateTime,
 
   override def toSeq: Seq[(String, String)] = {
     val seq = mutable.ArrayBuffer[(String, String)]()
-    if (time != null) seq += "time" -> time.toString("yyyy-MM-dd HH:mm:ss.SSS")
+    if (time != null) seq += "datetime" -> time.toString("yyyy-MM-dd HH:mm:ss.SSS")
     seq += "age" -> jvmAgeSeconds.toString
     seq += "type" -> gcType
     if (gcCause != null) seq += "cause" -> gcCause

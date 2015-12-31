@@ -27,7 +27,7 @@ class ParserTest extends FlatSpec with Matchers {
     val line = """2015-12-04T16:07:12.422+1100: 6994.482: [Full GC [PSYoungGen: 14194K->0K(1376448K)] [ParOldGen: 2788303K->1802287K(2796224K)] 2802498K->1802287K(4172672K) [PSPermGen: 66560K->66131K(132736K)], 3.8232380 secs] [Times: user=10.81 sys=0.06, real=3.83 secs]"""
 
     val Parsed.Success(value, _) = GcLine.parse(line)
-    value.toSeq.mkString("\n") shouldBe """(time,2015-12-04 16:07:12.422)
+    value.toSeq.mkString("\n") shouldBe """(datetime,2015-12-04 16:07:12.422)
                                           |(age,6994.482)
                                           |(type,Full GC)
                                           |(pause,3.823238)
@@ -250,7 +250,7 @@ class ParserTest extends FlatSpec with Matchers {
                                                 |RegionDelta(ParOldGen,2590524K,2731841K,2796224K,2796224K)
                                                 |RegionDelta(PSPermGen,67601K,67601K,67648K,67648K)""".stripMargin
 
-    events(1).toSeq.mkString("\n") shouldBe """(time,2015-12-10 15:46:54.493)
+    events(1).toSeq.mkString("\n") shouldBe """(datetime,2015-12-10 15:46:54.493)
                                               |(age,524176.553)
                                               |(type,Full GC)
                                               |(pause,2.324499)
