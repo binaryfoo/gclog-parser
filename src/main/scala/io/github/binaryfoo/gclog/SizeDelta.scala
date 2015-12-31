@@ -10,11 +10,11 @@ case class GCEvent(time: DateTime,
                    gcCause: String,
                    heapDelta: SizeDelta,
                    generationDeltas: Seq[GenerationDelta],
-                   pauseSeconds: Double) {
+                   pauseSeconds: Double) extends ToSeqAble {
 
   import SuffixExpander.expandSuffix
 
-  def toSeq: Seq[(String, String)] = {
+  override def toSeq: Seq[(String, String)] = {
     val seq = mutable.ArrayBuffer[(String, String)]()
     if (time != null) seq += "time" -> time.toString("yyyy-MM-dd HH:mm:ss.SSS")
     seq += "age" -> jvmAgeSeconds.toString

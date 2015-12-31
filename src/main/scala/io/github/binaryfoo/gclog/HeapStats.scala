@@ -5,9 +5,9 @@ import SuffixExpander.expandSuffix
 /**
   * Captures extra data data written when -XX:+PrintHeapAtGC option is passed to the JVM.
   */
-case class DetailedGCEvent(e: GCEvent, regions: Seq[RegionDelta]) {
+case class DetailedGCEvent(e: GCEvent, regions: Seq[RegionDelta]) extends ToSeqAble {
 
-  def toSeq: Seq[(String, String)] = {
+  override def toSeq: Seq[(String, String)] = {
     e.toSeq ++ regions.flatMap { case RegionDelta(name, start, end, startCapacity, endCapacity) =>
       Seq(
         s"${name}Before" -> expandSuffix(start),
