@@ -6,16 +6,15 @@ import org.joda.time.format.DateTimeFormat
 object Parser {
 
   private val TimestampFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ").withOffsetParsed()
-  private val Digit = CharIn('0' to '9')
-  private val YyyyMMdd = Digit.rep(4) ~ "-" ~ Digit.rep(2) ~ "-" ~ Digit.rep(2)
-  private val HhMMssSSS = Digit.rep(2) ~ ":" ~ Digit.rep(2) ~ ":" ~ Digit.rep(2) ~ "." ~ Digit.rep(3)
-  private val Timezone = ("+" | "-") ~ Digit.rep(4)
+  private val YyyyMMdd = Digits(4) ~ "-" ~ Digits(2) ~ "-" ~ Digits(2)
+  private val HhMMssSSS = Digits(2) ~ ":" ~ Digits(2) ~ ":" ~ Digits(2) ~ "." ~ Digits(3)
+  private val Timezone = ("+" | "-") ~ Digits(4)
   val Timestamp = (YyyyMMdd ~ "T" ~ HhMMssSSS ~ Timezone).!.map(TimestampFormat.parseDateTime)
 
-  private val Number = Digit.rep(1) ~ "." ~ Digit.rep
+  private val Number = AtLeastDigits(1) ~ "." ~ AtLeastDigits(1)
   private val Seconds = Number.!.map(_.toDouble)
   private val Multiplier = CharIn(Seq('K', 'M'))
-  private val Size = Digit.rep ~ Multiplier
+  private val Size = AtLeastDigits(1) ~ Multiplier
   val SizeStats = (Size.! ~ "->" ~ Size.! ~ "(" ~ Size.! ~ ")").map {
     case (start, end, capacity) => SizeDelta(start, end, capacity)
   }
@@ -42,7 +41,7 @@ object Parser {
 
   private val Space = " ".rep
   private val RegionName = (CharIn('a' to 'z', 'A' to 'Z', '-' to '-', ' ' to ' ') ~ !("total"|"used")).rep.!.map(_.trim)
-  private val HeapRegionSubSpace = Space ~ GenerationName.! ~ Space ~ "space" ~ Space ~ Size.! ~ "," ~ Space ~ (Digit.rep ~ "%").! ~ " used" ~ IgnoredLine
+  private val HeapRegionSubSpace = Space ~ GenerationName.! ~ Space ~ "space" ~ Space ~ Size.! ~ "," ~ Space ~ (AtLeastDigits(1) ~ "%").! ~ " used" ~ IgnoredLine
   private val HeapRegionSubSpaces = HeapRegionSubSpace.map {
     case (name, capacity, used) => HeapRegion(name, capacity, used)
   }.rep
