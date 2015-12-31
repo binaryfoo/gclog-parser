@@ -12,6 +12,8 @@ case class GCEvent(time: DateTime,
                    generationDeltas: Seq[GenerationDelta],
                    pauseSeconds: Double) {
 
+  import SuffixExpander.expandSuffix
+
   def toSeq: Seq[(String, String)] = {
     val seq = mutable.ArrayBuffer[(String, String)]()
     if (time != null) seq += "time" -> time.toString("yyyy-MM-dd HH:mm:ss.SSS")
@@ -30,7 +32,6 @@ case class GCEvent(time: DateTime,
     seq.toSeq
   }
 
-  private def expandSuffix(v: String): String = SuffixExpander.toBytes(v).toString
 }
 
 case class SizeDelta(start: String, end: String, capacity: String)
@@ -45,4 +46,5 @@ object SuffixExpander {
     }
     v.substring(0, v.length - 1).toLong * multiplier
   }
+  def expandSuffix(v: String): String = SuffixExpander.toBytes(v).toString
 }
