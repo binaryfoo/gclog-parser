@@ -74,6 +74,12 @@ object Parser {
         }
       DetailedGCEvent(e, deltas)
   }
+  private val QuickDetailedEvent = ("{" ~/ EndsWithCurlyBracket).!.map { s =>
+    val Parsed.Success(value, _) = DetailedEvent.parse(s)
+    value
+  }
+
+  private val IncrementalParser = GcLine | QuickDetailedEvent
 
   def parseLog(log: String): Seq[BasicGCEvent] = {
     val Parsed.Success(value, _) = GcLog.parse(log)
@@ -91,7 +97,7 @@ object Parser {
   }
 
   def incrementalParse(lines: String): IncrementalResult = {
-    (GcLine | DetailedEvent).parse(lines) match {
+    IncrementalParser.parse(lines) match {
       case Parsed.Success(value, _) => GcEventParsed(value)
       case Parsed.Failure(lastParser, index, _) =>
         // heuristic: if we've matched at least half the first line assume we're gonna match
@@ -108,3 +114,5 @@ sealed trait IncrementalResult
 object SkipLine extends IncrementalResult
 object NeedAnotherLine extends IncrementalResult
 case class GcEventParsed(event: GCEvent) extends IncrementalResult
+
+

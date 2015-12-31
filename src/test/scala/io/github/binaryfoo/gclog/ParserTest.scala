@@ -335,7 +335,7 @@ class ParserTest extends FlatSpec with Matchers {
     incrementalParse(lines.slice(1, 2).mkString("\n")) shouldBe a [GcEventParsed]
   }
 
-  "Incremental parse" should "parse heap stats" in {
+  "Incremental parse" should "bump along to heap stats" in {
     val lines = testInput("fragment.txt").split("\n")
 
     incrementalParse(lines.take(1).mkString("\n")) shouldBe SkipLine
@@ -344,6 +344,46 @@ class ParserTest extends FlatSpec with Matchers {
     incrementalParse(lines.slice(1, 23).mkString("\n")) shouldBe a [GcEventParsed]
     incrementalParse(lines.slice(23, 24).mkString("\n")) shouldBe SkipLine
     incrementalParse(lines.slice(33, 34).mkString("\n")) shouldBe a [GcEventParsed]
+  }
+
+  "Incremental parse" should "parse heap stats" in {
+    val lines = testInput("fragment.txt").split("\n")
+
+    val GcEventParsed(event) = incrementalParse(lines.slice(1, 23).mkString("\n"))
+    event.toSeq.mkString("\n") shouldBe """(datetime,2015-12-10 15:46:54.299)
+                                          |(age,524176.359)
+                                          |(type,GC)
+                                          |(pause,0.18402)
+                                          |(heapBefore,3748762624)
+                                          |(heapAfter,2875555840)
+                                          |(heapMax,4046913536)
+                                          |(PSYoungGenBefore,1096065024)
+                                          |(PSYoungGenAfter,78150656)
+                                          |(PSYoungGenMax,1183580160)
+                                          |(PSYoungGenBefore,1096065024)
+                                          |(PSYoungGenAfter,78150656)
+                                          |(PSYoungGenCapacityBefore,1096089600)
+                                          |(PSYoungGenCapacityAfter,1183580160)
+                                          |(edenBefore,100)
+                                          |(edenAfter,0)
+                                          |(edenCapacityBefore,932118528)
+                                          |(edenCapacityAfter,922615808)
+                                          |(fromBefore,99)
+                                          |(fromAfter,29)
+                                          |(fromCapacityBefore,163971072)
+                                          |(fromCapacityAfter,260964352)
+                                          |(toBefore,0)
+                                          |(toAfter,0)
+                                          |(toCapacityBefore,260964352)
+                                          |(toCapacityAfter,248053760)
+                                          |(ParOldGenBefore,2652696576)
+                                          |(ParOldGenAfter,2797405184)
+                                          |(ParOldGenCapacityBefore,2863333376)
+                                          |(ParOldGenCapacityAfter,2863333376)
+                                          |(PSPermGenBefore,69223424)
+                                          |(PSPermGenAfter,69223424)
+                                          |(PSPermGenCapacityBefore,69271552)
+                                          |(PSPermGenCapacityAfter,69271552)""".stripMargin
   }
 
   private def testInput(fileName: String): String = {
