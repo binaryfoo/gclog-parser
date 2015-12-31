@@ -31,11 +31,11 @@ object Parser {
   private val GcCause = " (" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ") "
   private val CollectionStats = "[" ~ GcType.! ~ GcCause.? ~ (Number ~ ": ").? ~ Ignored.? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = StringIn(" ", ", ")) ~ ", " ~ Seconds ~ " secs]"
 
-  val GcLine = ((Timestamp ~ ": ").? ~ Seconds ~ ": " ~ CollectionStats).map {
+  val GcLine = ((Timestamp ~ ": ").? ~ Seconds ~/ ": " ~ CollectionStats).map {
     case (timestamp, jvmAge, (gcType, gcCause, collections, pause)) =>
       val heapDelta = collections.collectFirst { case heap: SizeDelta => heap }.get
       val generationDeltas = collections.collect { case generation: GenerationDelta => generation }
-      GCEvent(timestamp.orNull, jvmAge, gcType, gcCause.orNull, heapDelta, generationDeltas, pause)
+      BasicGCEvent(timestamp.orNull, jvmAge, gcType, gcCause.orNull, heapDelta, generationDeltas, pause)
   }
 
   private val GcLog = (GcLine | IgnoredLine).rep
@@ -61,11 +61,23 @@ object Parser {
       spaces.head.copy(subspaces = spaces.tail)
   }
   private def heapDetails(when: String) = "Heap " ~ when ~ IgnoredLine ~ (HeapStat | MetaspaceStat).rep
-  private val DetailedEvent = "{" ~ heapDetails("before") ~ GcLine ~ IgnoredLine.? ~ heapDetails("after") ~ "}"
+  private val DetailedEvent = ("{" ~/ heapDetails("before") ~ GcLine ~ IgnoredLine.? ~ heapDetails("after") ~ "}").map {
+    case (before: Seq[HeapRegion], e: BasicGCEvent, after: Seq[HeapRegion]) =>
+      val deltas = before.zip(after)
+        .flatMap {
+          case (b, a) =>
+            Seq((b, a)) ++ b.subspaces.zip(a.subspaces)
+        }
+        .map {
+          case (b, a) if b.name == a.name =>
+            RegionDelta(b.name, b.used, a.used, b.capacity, a.capacity)
+        }
+      DetailedGCEvent(e, deltas)
+  }
 
-  def parseLog(log: String): Seq[GCEvent] = {
+  def parseLog(log: String): Seq[BasicGCEvent] = {
     val Parsed.Success(value, _) = GcLog.parse(log)
-    value.collect { case e: GCEvent => e }
+    value.collect { case e: BasicGCEvent => e }
   }
 
   /**
@@ -74,22 +86,12 @@ object Parser {
   def parseWithHeapStats(log: String): Seq[DetailedGCEvent] = {
     val Parsed.Success(value, _) = (DetailedEvent | IgnoredLine).rep.parse(log)
     value.collect {
-      case (before: Seq[HeapRegion], e: GCEvent, after: Seq[HeapRegion]) =>
-        val deltas = before.zip(after)
-          .flatMap {
-            case (b, a) =>
-              Seq((b, a)) ++ b.subspaces.zip(a.subspaces)
-          }
-          .map {
-          case (b, a) if b.name == a.name =>
-            RegionDelta(b.name, b.used, a.used, b.capacity, a.capacity)
-        }
-        DetailedGCEvent(e, deltas)
+      case e: DetailedGCEvent => e
     }
   }
 
   def incrementalParse(lines: String): IncrementalResult = {
-    GcLine.parse(lines) match {
+    (GcLine | DetailedEvent).parse(lines) match {
       case Parsed.Success(value, _) => GcEventParsed(value)
       case Parsed.Failure(lastParser, index, _) =>
         // heuristic: if we've matched at least half the first line assume we're gonna match

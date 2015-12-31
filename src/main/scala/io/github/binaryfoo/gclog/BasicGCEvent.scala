@@ -1,18 +1,17 @@
 package io.github.binaryfoo.gclog
 
+import io.github.binaryfoo.gclog.SuffixExpander.expandSuffix
 import org.joda.time.DateTime
 
 import scala.collection.mutable
 
-case class GCEvent(time: DateTime,
-                   jvmAgeSeconds: Double,
-                   gcType: String,
-                   gcCause: String,
-                   heapDelta: SizeDelta,
-                   generationDeltas: Seq[GenerationDelta],
-                   pauseSeconds: Double) extends ToSeqAble {
-
-  import SuffixExpander.expandSuffix
+case class BasicGCEvent(time: DateTime,
+                        jvmAgeSeconds: Double,
+                        gcType: String,
+                        gcCause: String,
+                        heapDelta: SizeDelta,
+                        generationDeltas: Seq[GenerationDelta],
+                        pauseSeconds: Double) extends GCEvent {
 
   override def toSeq: Seq[(String, String)] = {
     val seq = mutable.ArrayBuffer[(String, String)]()
@@ -38,13 +37,3 @@ case class SizeDelta(start: String, end: String, capacity: String)
 
 case class GenerationDelta(name: String, delta: SizeDelta)
 
-object SuffixExpander {
-  def toBytes(v: String): Long = {
-    val multiplier = v.charAt(v.length - 1) match {
-      case 'K' => 1024
-      case '%' => 1 // hack
-    }
-    v.substring(0, v.length - 1).toLong * multiplier
-  }
-  def expandSuffix(v: String): String = SuffixExpander.toBytes(v).toString
-}

@@ -18,7 +18,7 @@ public class JavaApiTest {
 
   @Test
   public void parseLog() throws IOException {
-    Seq<GCEvent> events = Parser.parseLog(testInput("fragment.txt"));
+    Seq<BasicGCEvent> events = Parser.parseLog(testInput("fragment.txt"));
     assertThat(events.apply(0).time(), is(new DateTime(2015, 12, 10, 15, 46, 54, 299, Plus11)));
     assertThat(events.apply(0).gcType(), is("GC"));
     assertThat(events.apply(1).time(), is(new DateTime(2015, 12, 10, 15, 46, 54, 493, Plus11)));

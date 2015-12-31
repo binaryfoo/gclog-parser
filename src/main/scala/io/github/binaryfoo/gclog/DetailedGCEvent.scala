@@ -1,11 +1,14 @@
 package io.github.binaryfoo.gclog
 
 import SuffixExpander.expandSuffix
+import org.joda.time.DateTime
 
 /**
   * Captures extra data data written when -XX:+PrintHeapAtGC option is passed to the JVM.
   */
-case class DetailedGCEvent(e: GCEvent, regions: Seq[RegionDelta]) extends ToSeqAble {
+case class DetailedGCEvent(e: BasicGCEvent, regions: Seq[RegionDelta]) extends GCEvent {
+
+  override def time: DateTime = e.time
 
   override def toSeq: Seq[(String, String)] = {
     e.toSeq ++ regions.flatMap { case RegionDelta(name, start, end, startCapacity, endCapacity) =>
@@ -17,6 +20,7 @@ case class DetailedGCEvent(e: GCEvent, regions: Seq[RegionDelta]) extends ToSeqA
       )
     }
   }
+
 }
 
 /**

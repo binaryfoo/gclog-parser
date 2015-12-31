@@ -1,5 +1,8 @@
 package io.github.binaryfoo.gclog
 
-trait ToSeqAble {
+import org.joda.time.DateTime
+
+trait GCEvent {
+  def time: DateTime
   def toSeq: Seq[(String, String)]
 }

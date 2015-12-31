@@ -335,12 +335,14 @@ class ParserTest extends FlatSpec with Matchers {
     incrementalParse(lines.slice(1, 2).mkString("\n")) shouldBe a [GcEventParsed]
   }
 
-  "Incremental parse" should "behave over multiple events" in {
+  "Incremental parse" should "parse heap stats" in {
     val lines = testInput("fragment.txt").split("\n")
 
     incrementalParse(lines.take(1).mkString("\n")) shouldBe SkipLine
-    incrementalParse(lines.slice(10, 13).mkString("\n")) shouldBe a [GcEventParsed]
-    incrementalParse(lines.slice(22, 23).mkString("\n")) shouldBe SkipLine
+    incrementalParse(lines.slice(1, 2).mkString("\n")) shouldBe NeedAnotherLine
+    incrementalParse(lines.slice(1, 22).mkString("\n")) shouldBe NeedAnotherLine
+    incrementalParse(lines.slice(1, 23).mkString("\n")) shouldBe a [GcEventParsed]
+    incrementalParse(lines.slice(23, 24).mkString("\n")) shouldBe SkipLine
     incrementalParse(lines.slice(33, 34).mkString("\n")) shouldBe a [GcEventParsed]
   }
 
