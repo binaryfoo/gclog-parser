@@ -1,7 +1,5 @@
 package io.github.binaryfoo.gclog
 
-import io.github.binaryfoo.gclog.SuffixExpander.toBytes
-
 object ToTsv {
 
   def main(args: Array[String]): Unit = {
@@ -9,22 +7,14 @@ object ToTsv {
     val events = Parser.parseLog(input)
 
     val w = Console.out
-    w.println("time\tpause\theapBefore\theapAfter\theapMax\ttype")
+    val delimiter = "\t"
+    events.headOption.foreach { e =>
+      val header = e.toSeq.map(_._1).mkString(delimiter)
+      w.println(header)
+    }
     events.foreach { e =>
-      val time = if (e.time != null) {
-        e.time.toString("yyyy-MM-dd HH:mm:ss.SSS")
-      } else {
-        e.jvmAgeSeconds.toString
-      }
-      val line = Seq(
-        time,
-        e.pauseSeconds,
-        toBytes(e.heapDelta.start),
-        toBytes(e.heapDelta.end),
-        toBytes(e.heapDelta.capacity),
-        e.gcType
-      )
-      w.println(line.mkString("\t"))
+      val line = e.toSeq.map(_._2).mkString(delimiter)
+      w.println(line)
     }
     w.flush()
   }
