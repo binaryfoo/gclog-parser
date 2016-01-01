@@ -23,12 +23,12 @@ object Parser {
   private val Ignored = ("\nDesired" ~ IgnoredLine) | ("- age" ~ IgnoredLine)
 
   private val GenerationName = CharIn('a' to 'z', 'A' to 'Z').rep
-  val GenerationStats = ("[" ~ GenerationName.! ~ Ignored.rep.? ~ ": " ~ SizeStats ~ (", " ~ Number ~ " secs").? ~ "]").map {
+  val GenerationStats = ((Number ~ ": ").? ~ "[" ~ GenerationName.! ~ Ignored.rep.? ~ ": " ~ SizeStats ~ (", " ~ Number ~ " secs").? ~ "]").map {
     case (name, delta) => GenerationDelta(name, delta)
   }
   private val GcType = StringIn("Full GC", "GC--", "GC")
   private val GcCause = " (" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ") "
-  private val CollectionStats = "[" ~ GcType.! ~ GcCause.? ~ (Number ~ ": ").? ~ Ignored.? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = StringIn(" ", ", ")) ~ ", " ~ Seconds ~ " secs]"
+  private val CollectionStats = "[" ~ GcType.! ~ GcCause.? ~ (Number ~ ": ").? ~ Ignored.? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = (StringIn(" ", ", ") | Pass)) ~ ", " ~ Seconds ~ " secs]"
 
   val GcLine = ((Timestamp ~ ": ").? ~ Seconds ~/ ": " ~ CollectionStats).map {
     case (timestamp, jvmAge, (gcType, gcCause, collections, pause)) =>

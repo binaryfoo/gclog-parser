@@ -386,6 +386,26 @@ class ParserTest extends FlatSpec with Matchers {
                                           |(PSPermGenCapacityAfter,69271552)""".stripMargin
   }
 
+  "Incremental parse" should "parse CMS allocation failure" in {
+    val line = """28892.707: [GC (Allocation Failure) 28892.707: [ParNew: 943680K->943680K(943680K), 0.0000217 secs]28892.708: [CMS: 745269K->789117K(819200K), 2.5351516 secs] 1688949K->789117K(1762880K), [Metaspace: 21984K->21984K(1069056K)], 2.5433119 secs] [Times: user=2.23 sys=0.01, real=2.54 secs]"""
+    val GcEventParsed(event: BasicGCEvent) = incrementalParse(line)
+    event.generationDeltas should contain(GenerationDelta("CMS", SizeDelta("745269K", "789117K", "819200K")))
+  }
+
+  "Incremental parse" should "parse another breed of parse CMS allocation failure" in {
+    val line = """28960.533: [Full GC (Allocation Failure) 28960.533: [CMS: 819199K->819199K(819200K), 3.5242634 secs] 1762879K->1538758K(1762880K), [Metaspace: 21984K->21984K(1069056K)], 3.5243652 secs] [Times: user=3.52 sys=0.00, real=3.52 secs] """
+    val GcEventParsed(event: BasicGCEvent) = incrementalParse(line)
+    event.generationDeltas should contain(GenerationDelta("CMS", SizeDelta("819199K", "819199K", "819200K")))
+  }
+
+//  "Incremental parse" should "parse borked CMS collection" in {
+//    val line = """28925.427: [Full GC (Allocation Failure) 28925.427: [CMS28925.436: [CMS-concurrent-sweep: 0.336/0.372 secs] [Times: user=1.08 sys=0.08, real=0.37 secs]
+//                 | (concurrent mode failure): 819187K->819199K(819200K), 3.0244510 secs] 1762867K->1215634K(1762880K), [Metaspace: 21984K->21984K(1069056K)], 3.0245827 secs] [Times: user=3.03 sys=0.00, real=3.02 secs]
+//                 |""".stripMargin
+//    val GcEventParsed(event: BasicGCEvent) = incrementalParse(line)
+//    event.generationDeltas should contain(GenerationDelta("CMS", SizeDelta("819199K", "819199K", "819200K")))
+//  }
+
   private def testInput(fileName: String): String = {
     new String(Files.readAllBytes(new File(s"src/test/resources/$fileName").toPath))
   }
