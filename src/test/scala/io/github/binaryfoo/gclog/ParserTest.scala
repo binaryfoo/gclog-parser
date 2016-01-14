@@ -15,7 +15,7 @@ class ParserTest extends FlatSpec with Matchers {
   "Full GC" should "be parsed" in {
     val line = """2015-12-04T16:07:12.422+1100: 6994.482: [Full GC [PSYoungGen: 14194K->0K(1376448K)] [ParOldGen: 2788303K->1802287K(2796224K)] 2802498K->1802287K(4172672K) [PSPermGen: 66560K->66131K(132736K)], 3.8232380 secs] [Times: user=10.81 sys=0.06, real=3.83 secs]"""
 
-    val Parsed.Success(value, _) = GcLine.parse(line)
+    val Parsed.Success(value: BasicGCEvent, _) = GcLine.parse(line)
     value.time shouldBe new DateTime(2015, 12, 4, 16, 7, 12, 422, Plus11)
     value.jvmAgeSeconds shouldBe 6994.482
     value.gcType shouldBe "Full GC"
@@ -44,6 +44,16 @@ class ParserTest extends FlatSpec with Matchers {
                                           |(PSPermGenAfter,67718144)
                                           |(PSPermGenMax,135921664)""".stripMargin
   }
+  "CmsGcEvent" should "be convertible into a Map" in {
+    val line = """2015-05-26T16:23:08.447-0200: 65.550: [GC (CMS Final Remark) [YG occupancy: 387920 K (613440 K)]65.550: [Rescan (parallel) , 0.0085125 secs]65.559: [weak refs processing, 0.0000243 secs]65.559: [class unloading, 0.0013120 secs]65.560: [scrub symbol table, 0.0008345 secs]65.561: [scrub string table, 0.0001759 secs][1 CMS-remark: 10812086K(11901376K)] 11200006K(12514816K), 0.0110730 secs] [Times: user=0.06 sys=0.00, real=0.01 secs]"""
+
+    val Parsed.Success(value, _) = GcLine.parse(line)
+    value.toSeq.mkString("\n") shouldBe """(datetime,2015-05-26 16:23:08.447)
+                                          |(age,65.55)
+                                          |(type,GC)
+                                          |(cause,CMS Final Remark)
+                                          |(pause,0.01)""".stripMargin
+  }
 
   "Timestamp" should "be parsed" in {
     val Parsed.Success(value, _) = Timestamp.parse("2015-12-04T16:07:12.422+1100")
@@ -65,7 +75,7 @@ class ParserTest extends FlatSpec with Matchers {
   "Promotion failure" should "be parsed" in {
     val line = """2015-12-10T15:42:08.076+1100: 523890.136: [GC-- [PSYoungGen: 1275256K->1275256K(1275264K)] 4007798K->4071477K(4071488K), 0.3913740 secs] [Times: user=0.54 sys=0.00, real=0.39 secs]"""
 
-    val Parsed.Success(value, _) = GcLine.parse(line)
+    val Parsed.Success(value: BasicGCEvent, _) = GcLine.parse(line)
     value.gcType shouldBe "GC--"
     value.pauseSeconds shouldBe 0.391374
   }
@@ -76,7 +86,7 @@ class ParserTest extends FlatSpec with Matchers {
       | [PSYoungGen: 1220800K->88639K(1260480K)] 3440993K->2372792K(4056704K), 0.1104060 secs] [Times: user=0.24 sys=0.01, real=0.12 secs]
       |""".stripMargin
 
-    val Parsed.Success(value, _) = GcLine.parse(lines)
+    val Parsed.Success(value: BasicGCEvent, _) = GcLine.parse(lines)
     value.time shouldBe new DateTime(2015, 12, 10, 15, 43, 18, 274, Plus11)
     value.heapDelta shouldBe SizeDelta("3440993K", "2372792K", "4056704K")
     value.generationDeltas shouldBe Seq(GenerationDelta("PSYoungGen", SizeDelta("1220800K", "88639K", "1260480K")))
@@ -84,7 +94,7 @@ class ParserTest extends FlatSpec with Matchers {
   }
 
   "Multiple events" should "be parsed" in {
-    val events = Parser.parseLog(testInput("fragment.txt"))
+    val events = Parser.parseLog[BasicGCEvent](testInput("fragment.txt"))
     events(0).time shouldBe new DateTime(2015, 12, 10, 15, 46, 54, 299, Plus11)
     events(0).gcType shouldBe "GC"
 
@@ -93,22 +103,22 @@ class ParserTest extends FlatSpec with Matchers {
   }
 
   "GC cause" should "be parsed" in {
-    val Parsed.Success(value, _) = GcLine.parse("0.235: [GC (Allocation Failure)  65536K->57255K(251392K), 0.0222615 secs]")
+    val Parsed.Success(value: BasicGCEvent, _) = GcLine.parse("0.235: [GC (Allocation Failure)  65536K->57255K(251392K), 0.0222615 secs]")
     value.gcCause shouldBe "Allocation Failure"
   }
 
   "GC cause with details" should "be parsed" in {
-    val Parsed.Success(value, _) = GcLine.parse("2015-12-28T13:50:37.116-1000: 0.251: [GC (Allocation Failure) [PSYoungGen: 65536K->10736K(76288K)] 65536K->57253K(251392K), 0.0217970 secs] [Times: user=0.09 sys=0.06, real=0.02 secs]")
+    val Parsed.Success(value: BasicGCEvent, _) = GcLine.parse("2015-12-28T13:50:37.116-1000: 0.251: [GC (Allocation Failure) [PSYoungGen: 65536K->10736K(76288K)] 65536K->57253K(251392K), 0.0217970 secs] [Times: user=0.09 sys=0.06, real=0.02 secs]")
     value.gcCause shouldBe "Allocation Failure"
   }
 
   "Metaspace sizing" should "be parsed" in {
-    val Parsed.Success(value, _) = GcLine.parse("2015-12-28T13:50:37.214-1000: 0.349: [Full GC (Ergonomics) [PSYoungGen: 10720K->0K(141824K)] [ParOldGen: 109101K->117471K(290816K)] 119821K->117471K(432640K), [Metaspace: 4082K->4082K(1056768K)], 0.2284721 secs] [Times: user=1.42 sys=0.02, real=0.23 secs]")
+    val Parsed.Success(value: BasicGCEvent, _) = GcLine.parse("2015-12-28T13:50:37.214-1000: 0.349: [Full GC (Ergonomics) [PSYoungGen: 10720K->0K(141824K)] [ParOldGen: 109101K->117471K(290816K)] 119821K->117471K(432640K), [Metaspace: 4082K->4082K(1056768K)], 0.2284721 secs] [Times: user=1.42 sys=0.02, real=0.23 secs]")
     value.generationDeltas.collectFirst { case d: GenerationDelta if d.name == "Metaspace" => d }.get shouldBe GenerationDelta("Metaspace", SizeDelta("4082K", "4082K", "1056768K"))
   }
 
   "Basic jdk7 log" should "be parsed" in {
-    val events = Parser.parseLog(testInput("basic-java7-gc.log"))
+    val events = Parser.parseLog[BasicGCEvent](testInput("basic-java7-gc.log"))
     events.size shouldBe 7
 
     events(0).jvmAgeSeconds shouldBe 0.263
@@ -123,13 +133,13 @@ class ParserTest extends FlatSpec with Matchers {
   }
 
   "Jdk7 log with heap stats" should "be parsed" in {
-    val events = Parser.parseLog(testInput("heap-java7-gc.log"))
+    val events = Parser.parseLog[BasicGCEvent](testInput("heap-java7-gc.log"))
     events.size shouldBe 7
     events.last.jvmAgeSeconds shouldBe 2.86
   }
 
   "Basic jdk8 log" should "be parsed" in {
-    val events = Parser.parseLog(testInput("basic-java8-gc.log"))
+    val events = Parser.parseLog[BasicGCEvent](testInput("basic-java8-gc.log"))
     events.size shouldBe 7
 
     events(0).jvmAgeSeconds shouldBe 0.235
@@ -144,7 +154,7 @@ class ParserTest extends FlatSpec with Matchers {
   }
 
   "Jdk8 log with heap stats" should "be parsed" in {
-    val events = Parser.parseLog(testInput("heap-java8-gc.log"))
+    val events = Parser.parseLog[BasicGCEvent](testInput("heap-java8-gc.log"))
     events.size shouldBe 7
     events.last.jvmAgeSeconds shouldBe 2.198
   }
@@ -156,7 +166,7 @@ class ParserTest extends FlatSpec with Matchers {
       |: 838848K->5616K(943680K), 0.0118666 secs] 838848K->5616K(943744K), 0.0119520 secs] [Times: user=0.01 sys=0.01, real=0.01 secs]
       |""".stripMargin
 
-    val events = Parser.parseLog(input)
+    val events = Parser.parseLog[BasicGCEvent](input)
     events.head.jvmAgeSeconds shouldBe 7.524
     events.head.pauseSeconds shouldBe 0.011952
   }
@@ -164,7 +174,7 @@ class ParserTest extends FlatSpec with Matchers {
   "CMS Full GC" should "be parsed" in {
     val input = """29517.100: [Full GC (Allocation Failure) 29517.100: [CMS: 819199K->819199K(819200K), 3.2809595 secs] 1762879K->1762879K(1762880K), [Metaspace: 21995K->21995K(1069056K)], 3.2810538 secs] [Times: user=3.28 sys=0.00, real=3.28 secs]"""
 
-    val events = Parser.parseLog(input)
+    val events = Parser.parseLog[BasicGCEvent](input)
     events.head.jvmAgeSeconds shouldBe 29517.1
     events.head.pauseSeconds shouldBe 3.2810538
     events.head.generationDeltas.head shouldBe GenerationDelta("CMS", SizeDelta("819199K", "819199K", "819200K"))
@@ -405,6 +415,89 @@ class ParserTest extends FlatSpec with Matchers {
 //    val GcEventParsed(event: BasicGCEvent) = incrementalParse(line)
 //    event.generationDeltas should contain(GenerationDelta("CMS", SizeDelta("819199K", "819199K", "819200K")))
 //  }
+
+  // examples from https://plumbr.eu/handbook/garbage-collection-algorithms-implementations
+
+  "Plumber.eu –XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps example" should "parse" in {
+    val input = """2015-05-26T14:45:37.987-0200: 151.126: [GC (Allocation Failure) 151.126: [DefNew: 629119K->69888K(629120K), 0.0584157 secs] 1619346K->1273247K(2027264K), 0.0585007 secs] [Times: user=0.06 sys=0.00, real=0.06 secs]
+                  |2015-05-26T14:45:59.690-0200: 172.829: [GC (Allocation Failure) 172.829: [DefNew: 629120K->629120K(629120K), 0.0000372 secs]172.829: [Tenured: 1203359K->755802K(1398144K), 0.1855567 secs] 1832479K->755802K(2027264K), [Metaspace: 6741K->6741K(1056768K)], 0.1856954 secs] [Times: user=0.18 sys=0.00, real=0.18 secs]""".stripMargin
+
+    val events = parseLog[BasicGCEvent](input)
+
+    events(0).jvmAgeSeconds shouldBe 151.126
+    events(0).pauseSeconds shouldBe 0.0585007
+    events(0).heapDelta shouldBe SizeDelta("1619346K", "1273247K", "2027264K")
+    events(0).generationDeltas.size shouldBe 1
+
+    events(1).jvmAgeSeconds shouldBe 172.829
+    events(1).pauseSeconds shouldBe 0.1856954
+    events(1).heapDelta shouldBe SizeDelta("1832479K", "755802K", "2027264K")
+    events(1).generationDeltas.map(_.name) shouldBe Seq("DefNew", "Tenured", "Metaspace")
+
+    events.size shouldBe 2
+  }
+
+  "Plumber.eu -XX:+UseParallelGC -XX:+UseParallelOldGC example" should "parse"in {
+    val input = """2015-05-26T14:27:40.915-0200: 116.115: [GC (Allocation Failure) [PSYoungGen: 2694440K->1305132K(2796544K)] 9556775K->8438926K(11185152K), 0.2406675 secs] [Times: user=1.77 sys=0.01, real=0.24 secs]
+                  |2015-05-26T14:27:41.155-0200: 116.356: [Full GC (Ergonomics) [PSYoungGen: 1305132K->0K(2796544K)] [ParOldGen: 7133794K->6597672K(8388608K)] 8438926K->6597672K(11185152K), [Metaspace: 6745K->6745K(1056768K)], 0.9158801 secs] [Times: user=4.49 sys=0.64, real=0.92 secs]""".stripMargin
+
+    val events = parseLog[BasicGCEvent](input)
+
+    events(0).gcType shouldBe "GC"
+    events(0).gcCause shouldBe "Allocation Failure"
+    events(0).pauseSeconds shouldBe 0.2406675
+
+    events(1).gcType shouldBe "Full GC"
+    events(1).gcCause shouldBe "Ergonomics"
+    events(1).generationDeltas.map(_.name) shouldBe Seq("PSYoungGen", "ParOldGen", "Metaspace")
+    events(1).pauseSeconds shouldBe 0.9158801
+
+    events.size shouldBe 2
+  }
+
+  "CMS initial mark" should "be parsed" in {
+    val events = parseLog[CmsGcEvent]("2015-05-26T16:23:07.321-0200: 64.425: [GC (CMS Initial Mark) [1 CMS-initial-mark: 10812086K(11901376K)] 10887844K(12514816K), 0.0001997 secs] [Times: user=0.00 sys=0.00, real=0.00 secs]")
+    events(0).gcType shouldBe "GC"
+    events(0).gcCause shouldBe "CMS Initial Mark"
+    events(0).pauseSeconds shouldBe 0.0
+  }
+
+  "CMS-concurrent-mark-start" should "be parsed" in {
+    val events = parseLog[CmsGcEvent]("2015-05-26T16:23:07.321-0200: 64.425: [CMS-concurrent-mark-start]")
+    events(0).gcType shouldBe "CMS-concurrent-mark-start"
+  }
+
+  "CMS-concurrent-mark" should "be parsed" in {
+    val events = parseLog[CmsGcEvent]("2015-05-26T16:23:07.357-0200: 64.460: [CMS-concurrent-mark: 0.035/0.035 secs] [Times: user=0.07 sys=0.00, real=0.03 secs]")
+    events(0).gcType shouldBe "CMS-concurrent-mark"
+    events(0).pauseSeconds shouldBe 0.03
+  }
+
+  "Plumber.eu -XX:+UseConcMarkSweepGC example" should "parse"in {
+    val input = """2015-05-26T16:23:07.321-0200: 64.425: [GC (CMS Initial Mark) [1 CMS-initial-mark: 10812086K(11901376K)] 10887844K(12514816K), 0.0001997 secs] [Times: user=0.00 sys=0.00, real=0.00 secs]
+                  |2015-05-26T16:23:07.321-0200: 64.425: [CMS-concurrent-mark-start]
+                  |2015-05-26T16:23:07.357-0200: 64.460: [CMS-concurrent-mark: 0.035/0.035 secs] [Times: user=0.07 sys=0.00, real=0.03 secs]
+                  |2015-05-26T16:23:07.357-0200: 64.460: [CMS-concurrent-preclean-start]
+                  |2015-05-26T16:23:07.373-0200: 64.476: [CMS-concurrent-preclean: 0.016/0.016 secs] [Times: user=0.02 sys=0.00, real=0.02 secs]
+                  |2015-05-26T16:23:07.373-0200: 64.476: [CMS-concurrent-abortable-preclean-start]
+                  |2015-05-26T16:23:08.446-0200: 65.550: [CMS-concurrent-abortable-preclean: 0.167/1.074 secs] [Times: user=0.20 sys=0.00, real=1.07 secs]
+                  |2015-05-26T16:23:08.447-0200: 65.550: [GC (CMS Final Remark) [YG occupancy: 387920 K (613440 K)]65.550: [Rescan (parallel) , 0.0085125 secs]65.559: [weak refs processing, 0.0000243 secs]65.559: [class unloading, 0.0013120 secs]65.560: [scrub symbol table, 0.0008345 secs]65.561: [scrub string table, 0.0001759 secs][1 CMS-remark: 10812086K(11901376K)] 11200006K(12514816K), 0.0110730 secs] [Times: user=0.06 sys=0.00, real=0.01 secs]
+                  |2015-05-26T16:23:08.458-0200: 65.561: [CMS-concurrent-sweep-start]
+                  |2015-05-26T16:23:08.485-0200: 65.588: [CMS-concurrent-sweep: 0.027/0.027 secs] [Times: user=0.03 sys=0.00, real=0.03 secs]
+                  |2015-05-26T16:23:08.485-0200: 65.589: [CMS-concurrent-reset-start]
+                  |2015-05-26T16:23:08.497-0200: 65.601: [CMS-concurrent-reset: 0.012/0.012 secs] [Times: user=0.01 sys=0.00, real=0.01 secs]""".stripMargin
+
+    val events = parseLog[CmsGcEvent](input)
+
+    events(0).gcType shouldBe "GC"
+    events(0).gcCause shouldBe "CMS Initial Mark"
+    events(0).pauseSeconds shouldBe 0.00
+
+    events(11).gcType shouldBe "CMS-concurrent-reset"
+    events(11).pauseSeconds shouldBe 0.01
+
+    events.size shouldBe 12
+  }
 
   private def testInput(fileName: String): String = {
     new String(Files.readAllBytes(new File(s"src/test/resources/$fileName").toPath))

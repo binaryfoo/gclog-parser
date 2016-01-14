@@ -22,26 +22,50 @@ object Parser {
   private val IgnoredLine = CharsWhile(_ != '\n').? ~ "\n"
   private val Ignored = ("\nDesired" ~ IgnoredLine) | ("- age" ~ IgnoredLine)
 
-  private val GenerationName = CharIn('a' to 'z', 'A' to 'Z').rep
+  private val GenerationName = CharIn('a' to 'z', 'A' to 'Z', '0' to '9', Seq(' '), Seq('-')).rep
   val GenerationStats = ((Number ~ ": ").? ~ "[" ~ GenerationName.! ~ Ignored.rep.? ~ ": " ~ SizeStats ~ (", " ~ Number ~ " secs").? ~ "]").map {
     case (name, delta) => GenerationDelta(name, delta)
   }
-  private val GcType = StringIn("Full GC", "GC--", "GC")
-  private val GcCause = " (" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ") "
-  private val CollectionStats = "[" ~ GcType.! ~ GcCause.? ~ (Number ~ ": ").? ~ Ignored.? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = (StringIn(" ", ", ") | Pass)) ~ ", " ~ Seconds ~ " secs]"
-
-  val GcLine = ((Timestamp ~ ": ").? ~ Seconds ~/ ": " ~ CollectionStats).map {
-    case (timestamp, jvmAge, (gcType, gcCause, collections, pause)) =>
+  private val GcType = CharIn('a' to 'z', 'A' to 'Z', Seq('-'), Seq(' ')).rep.!.map(_.trim)
+  private val GcCause = "(" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ") "
+  private val BasicEvent = ((Number ~ ": ").? ~ Ignored.? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = StringIn(" ", ", ") | Pass) ~ ", " ~ Seconds ~ " secs]").map {
+    case (collections, pause) =>
       val heapDelta = collections.collectFirst { case heap: SizeDelta => heap }.get
       val generationDeltas = collections.collect { case generation: GenerationDelta => generation }
-      BasicGCEvent(timestamp.orNull, jvmAge, gcType, gcCause.orNull, heapDelta, generationDeltas, pause)
+      (heapDelta, generationDeltas, pause)
+  }
+  private def basicEvent(gcType: String, gcCause: Option[String]) = {
+    BasicEvent.map {
+      case (heapDelta, generationDeltas, pause) =>
+        BasicGCEvent(null, 0, gcType, gcCause.orNull, heapDelta, generationDeltas, pause)
+    }
+  }
+  private val CmsEvent = "]" | ((AnyChar ~ !"real=").rep ~ " real=" ~ Seconds ~ " secs]")
+  private def cmsEvent(gcType: String, gcCause: Option[String]) = {
+    CmsEvent.map {
+      case (pause: Double) => CmsGcEvent(null, 0, gcType, gcCause.orNull, pause)
+      case (_) => CmsGcEvent(null, 0, gcType, gcCause.orNull, 0)
+    }
+  }
+  private val CollectionStats = "[" ~ (GcType ~ GcCause.?).flatMap {
+    case (gcType, None) if gcType.startsWith("CMS") => cmsEvent(gcType, None)
+    case (gcType, c@Some(gcCause)) if gcCause.startsWith("CMS") => cmsEvent(gcType, c)
+    case (gcType, gcCause) => basicEvent(gcType, gcCause)
+  }
+
+  val GcLine = ((Timestamp ~ ": ").? ~ Seconds ~/ ": " ~ CollectionStats).map {
+    case (timestamp, jvmAge, b: BasicGCEvent) =>
+      b.copy(time = timestamp.orNull, jvmAgeSeconds = jvmAge)
+    case (timestamp, jvmAge, c: CmsGcEvent) =>
+      c.copy(time = timestamp.orNull, jvmAgeSeconds = jvmAge)
   }
 
   private val GcLog = (GcLine | IgnoredLine).rep
 
   private val Space = " ".rep
   private val RegionName = (CharIn('a' to 'z', 'A' to 'Z', '-' to '-', ' ' to ' ') ~ !("total"|"used")).rep.!.map(_.trim)
-  private val HeapRegionSubSpace = Space ~ GenerationName.! ~ Space ~ "space" ~ Space ~ Size.! ~ "," ~ Space ~ (AtLeastDigits(1) ~ "%").! ~ " used" ~ IgnoredLine
+  private val SubSpaceName = CharIn('a' to 'z', 'A' to 'Z').rep
+  private val HeapRegionSubSpace = Space ~ SubSpaceName.! ~ Space ~ "space" ~ Space ~ Size.! ~ "," ~ Space ~ (AtLeastDigits(1) ~ "%").! ~ " used" ~ IgnoredLine
   private val HeapRegionSubSpaces = HeapRegionSubSpace.map {
     case (name, capacity, used) => HeapRegion(name, capacity, used)
   }.rep
@@ -80,9 +104,9 @@ object Parser {
 
   private val IncrementalParser = GcLine | QuickDetailedEvent
 
-  def parseLog(log: String): Seq[BasicGCEvent] = {
+  def parseLog[T <: GCEvent](log: String): Seq[T] = {
     val Parsed.Success(value, _) = GcLog.parse(log)
-    value.collect { case e: BasicGCEvent => e }
+    value.collect { case e: T => e }
   }
 
   /**
