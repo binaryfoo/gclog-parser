@@ -23,4 +23,7 @@ case class CmsGcEvent(time: DateTime,
     seq.toSeq
   }
 
+  override def heap: Option[SizeDelta] = None
+
+  override def jvmAgeMillis: Long = (jvmAgeSeconds * 1000).toLong
 }

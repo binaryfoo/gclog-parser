@@ -1,14 +1,10 @@
 package io.github.binaryfoo.gclog
 
-import java.io.File
-import java.nio.file.Files
-
 import fastparse.all._
 import io.github.binaryfoo.gclog.Parser._
 import org.joda.time.{DateTime, DateTimeZone}
-import org.scalatest.{FlatSpec, Matchers}
 
-class ParserTest extends FlatSpec with Matchers {
+class ParserTest extends GcLogTest {
 
   private val Plus11 = DateTimeZone.forOffsetHours(11)
 
@@ -497,10 +493,6 @@ class ParserTest extends FlatSpec with Matchers {
     events(11).pauseSeconds shouldBe 0.01
 
     events.size shouldBe 12
-  }
-
-  private def testInput(fileName: String): String = {
-    new String(Files.readAllBytes(new File(s"src/test/resources/$fileName").toPath))
   }
 
 }

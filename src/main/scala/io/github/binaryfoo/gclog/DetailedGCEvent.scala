@@ -21,6 +21,8 @@ case class DetailedGCEvent(e: BasicGCEvent, regions: Seq[RegionDelta]) extends G
     }
   }
 
+  override def heap: Option[SizeDelta] = e.heap
+  override def jvmAgeMillis: Long = e.jvmAgeMillis
 }
 
 /**

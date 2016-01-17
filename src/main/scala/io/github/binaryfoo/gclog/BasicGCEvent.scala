@@ -31,6 +31,9 @@ case class BasicGCEvent(time: DateTime,
     seq.toSeq
   }
 
+  override def heap: Option[SizeDelta] = Some(heapDelta)
+
+  override def jvmAgeMillis: Long = (jvmAgeSeconds * 1000).toLong
 }
 
 case class SizeDelta(start: String, end: String, capacity: String)
