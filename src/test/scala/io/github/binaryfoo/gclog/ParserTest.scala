@@ -44,6 +44,14 @@ class ParserTest extends GcLogTest {
                                           |(PSPermGenReclaimed,439296)
                                           |(PSPermGenMax,135921664)""".stripMargin
   }
+
+  "Minor collection" should "be convertible to a Map" in {
+    val line = """2015-12-28T13:50:37.116-1000: 0.251: [GC (Allocation Failure) [PSYoungGen: 65536K->10736K(76288K)] 65536K->57253K(251392K), 0.0217970 secs] [Times: user=0.09 sys=0.06, real=0.02 secs]"""
+
+    val Parsed.Success(value, _) = GcLine.parse(line)
+    value.toSeq.mkString("\n") should include("""(promoted,47633408)""")
+  }
+
   "CmsGcEvent" should "be convertible into a Map" in {
     val line = """2015-05-26T16:23:08.447-0200: 65.550: [GC (CMS Final Remark) [YG occupancy: 387920 K (613440 K)]65.550: [Rescan (parallel) , 0.0085125 secs]65.559: [weak refs processing, 0.0000243 secs]65.559: [class unloading, 0.0013120 secs]65.560: [scrub symbol table, 0.0008345 secs]65.561: [scrub string table, 0.0001759 secs][1 CMS-remark: 10812086K(11901376K)] 11200006K(12514816K), 0.0110730 secs] [Times: user=0.06 sys=0.00, real=0.01 secs]"""
 
@@ -280,8 +288,6 @@ class ParserTest extends GcLogTest {
                                               |(PSPermGenAfter,69223424)
                                               |(PSPermGenReclaimed,0)
                                               |(PSPermGenMax,69271552)
-                                              |(PSYoungGenBefore,78150656)
-                                              |(PSYoungGenAfter,0)
                                               |(PSYoungGenCapacityBefore,1183580160)
                                               |(PSYoungGenCapacityAfter,1183580160)
                                               |(edenBefore,0)
@@ -296,12 +302,8 @@ class ParserTest extends GcLogTest {
                                               |(toAfter,0)
                                               |(toCapacityBefore,248053760)
                                               |(toCapacityAfter,248053760)
-                                              |(ParOldGenBefore,2797405184)
-                                              |(ParOldGenAfter,2122715136)
                                               |(ParOldGenCapacityBefore,2863333376)
                                               |(ParOldGenCapacityAfter,2863333376)
-                                              |(PSPermGenBefore,69223424)
-                                              |(PSPermGenAfter,69223424)
                                               |(PSPermGenCapacityBefore,69271552)
                                               |(PSPermGenCapacityAfter,69271552)""".stripMargin
   }
@@ -376,8 +378,7 @@ class ParserTest extends GcLogTest {
                                           |(PSYoungGenAfter,78150656)
                                           |(PSYoungGenReclaimed,1017914368)
                                           |(PSYoungGenMax,1183580160)
-                                          |(PSYoungGenBefore,1096065024)
-                                          |(PSYoungGenAfter,78150656)
+                                          |(promoted,144707584)
                                           |(PSYoungGenCapacityBefore,1096089600)
                                           |(PSYoungGenCapacityAfter,1183580160)
                                           |(edenBefore,100)
@@ -452,6 +453,7 @@ class ParserTest extends GcLogTest {
     events(0).gcType shouldBe "GC"
     events(0).gcCause shouldBe "Allocation Failure"
     events(0).pauseSeconds shouldBe 0.2406675
+    events(0).promotedBytes shouldBe Some(271459 * 1024)
 
     events(1).gcType shouldBe "Full GC"
     events(1).gcCause shouldBe "Ergonomics"

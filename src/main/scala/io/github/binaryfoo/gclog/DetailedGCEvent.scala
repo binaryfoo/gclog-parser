@@ -11,14 +11,14 @@ case class DetailedGCEvent(e: BasicGCEvent, regions: Seq[RegionDelta]) extends G
   override def time: DateTime = e.time
 
   override def toSeq: Seq[(String, String)] = {
-    e.toSeq ++ regions.flatMap { case RegionDelta(name, start, end, startCapacity, endCapacity) =>
+    (e.toSeq ++ regions.flatMap { case RegionDelta(name, start, end, startCapacity, endCapacity) =>
       Seq(
         s"${name}Before" -> expandSuffix(start),
         s"${name}After" -> expandSuffix(end),
         s"${name}CapacityBefore" -> expandSuffix(startCapacity),
         s"${name}CapacityAfter" -> expandSuffix(endCapacity)
       )
-    }
+    }).distinct
   }
 
   override def heap: Option[SizeDelta] = e.heap

@@ -30,12 +30,33 @@ case class BasicGCEvent(time: DateTime,
       seq += s"${name}Reclaimed" -> delta.reclaimedBytes.toString
       seq += s"${name}Max" -> expandSuffix(delta.capacity)
     }
+    promotedBytes.foreach { promoted =>
+      seq += "promoted" -> promoted.toString
+    }
     seq.toSeq
   }
 
   override def heap: Option[SizeDelta] = Some(heapDelta)
 
   override def jvmAgeMillis: Long = (jvmAgeSeconds * 1000).toLong
+
+  /**
+    * Only makes sense for Minor GC with a generational collector.
+    */
+  def promotedBytes: Option[Long] = {
+    (gcType, generation("young")) match {
+      case ("GC", Some(young: GenerationDelta)) =>
+        val total = heapDelta.reclaimedBytes
+        Some(young.delta.reclaimedBytes - total)
+      case _ => None
+    }
+  }
+
+  private def generation(name: String): Option[GenerationDelta] = {
+    generationDeltas.collectFirst {
+      case d: GenerationDelta if d.name.compareToIgnoreCase(name) != 0 => d
+    }
+  }
 }
 
 case class SizeDelta(start: String, end: String, capacity: String) {
