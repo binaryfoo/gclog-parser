@@ -10,10 +10,11 @@ object ToTsv {
   def main(args: Array[String]): Unit = {
     inputParser().parse(args, CmdLineOptions()).foreach { options =>
       val input = StdIn.readAllInput()
-      val events = if (options.heapStats)
+      val baseEvents = if (options.heapStats)
         Parser.parseWithHeapStats(input)
       else
         Parser.parseLog(input)
+      val events = new RateCalculator().apply(baseEvents)
 
       val w = Console.out
       val delimiter = options.delimiter
