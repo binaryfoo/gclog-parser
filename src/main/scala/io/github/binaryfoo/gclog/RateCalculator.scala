@@ -1,5 +1,7 @@
 package io.github.binaryfoo.gclog
 
+import io.github.binaryfoo.gclog.SuffixExpander.toBytes
+
 class RateCalculator {
 
   private var previous: GCEvent = null
@@ -10,7 +12,7 @@ class RateCalculator {
 
   def apply(e: GCEvent): GCEventWithRates = {
     val allocated = if (previous == null) {
-      e.heap.map(d => SuffixExpander.toBytes(d.start)).getOrElse(0L)
+      e.heap.map(d => d.startBytes).getOrElse(0L)
     } else {
       bytesAllocatedSince(e, previous)
     }
@@ -28,7 +30,7 @@ class RateCalculator {
   private def bytesAllocatedSince(current: GCEvent, previous: GCEvent): Long = {
     (current.heap, previous.heap) match {
       case (Some(SizeDelta(currentHeap, _, _)),Some(SizeDelta(_, previousHeap, _))) =>
-        SuffixExpander.toBytes(currentHeap) - SuffixExpander.toBytes(previousHeap)
+        toBytes(currentHeap) - toBytes(previousHeap)
       case _ =>
         0
     }

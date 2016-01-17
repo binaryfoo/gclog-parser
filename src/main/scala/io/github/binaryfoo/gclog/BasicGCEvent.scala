@@ -1,6 +1,6 @@
 package io.github.binaryfoo.gclog
 
-import io.github.binaryfoo.gclog.SuffixExpander.expandSuffix
+import io.github.binaryfoo.gclog.SuffixExpander.{expandSuffix, toBytes}
 import org.joda.time.DateTime
 
 import scala.collection.mutable
@@ -22,10 +22,12 @@ case class BasicGCEvent(time: DateTime,
     seq += "pause" -> pauseSeconds.toString
     seq += "heapBefore" -> expandSuffix(heapDelta.start)
     seq += "heapAfter" -> expandSuffix(heapDelta.end)
+    seq += "heapReclaimed" -> heapDelta.reclaimedBytes.toString
     seq += "heapMax" -> expandSuffix(heapDelta.capacity)
     for (GenerationDelta(name, delta) <- generationDeltas) {
       seq += s"${name}Before" -> expandSuffix(delta.start)
       seq += s"${name}After" -> expandSuffix(delta.end)
+      seq += s"${name}Reclaimed" -> delta.reclaimedBytes.toString
       seq += s"${name}Max" -> expandSuffix(delta.capacity)
     }
     seq.toSeq
@@ -36,7 +38,11 @@ case class BasicGCEvent(time: DateTime,
   override def jvmAgeMillis: Long = (jvmAgeSeconds * 1000).toLong
 }
 
-case class SizeDelta(start: String, end: String, capacity: String)
+case class SizeDelta(start: String, end: String, capacity: String) {
+  def startBytes = toBytes(start)
+  def endBytes = toBytes(end)
+  def reclaimedBytes = startBytes - endBytes
+}
 
 case class GenerationDelta(name: String, delta: SizeDelta)
 
