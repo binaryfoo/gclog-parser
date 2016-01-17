@@ -23,6 +23,6 @@ Use as a library from [maven central](http://search.maven.org/#search%7Cga%7C1%7
         <version>0.0.2</version>
     </dependency>
 
-Or [Download](http://search.maven.org/remotecontent?filepath=io/github/binaryfoo/gclog-parser/0.0.2/gclog-parser-0.0.2-assembly.jar) as a command line tool to convert a garbage collection log to a .csv file.
+Or [Download](https://oss.sonatype.org/service/local/artifact/maven/content?r=snapshots&g=io.github.binaryfoo&a=gclog-parser&c=assembly&v=LATEST') as a command line tool to convert a garbage collection log to a .csv file.
 
 Or use from [lagotto](https://github.com/binaryfoo/lagotto) to produce [basic charts](http://binaryfoo.github.io/lagotto/#_garbage_collection_logs).
