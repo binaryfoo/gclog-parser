@@ -9,7 +9,7 @@ import org.joda.time.DateTime
 case class DetailedGCEvent(e: BasicGCEvent, regions: Seq[RegionDelta]) extends GCEvent {
 
   override def time: DateTime = e.time
-
+  override def gcType: String = e.gcType
   override def toSeq: Seq[(String, String)] = {
     (e.toSeq ++ regions.flatMap { case RegionDelta(name, start, end, startCapacity, endCapacity) =>
       Seq(

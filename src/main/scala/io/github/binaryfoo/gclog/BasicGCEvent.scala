@@ -5,6 +5,9 @@ import org.joda.time.DateTime
 
 import scala.collection.mutable
 
+/**
+  * Event for the parallel collector. Maybe others too.
+  */
 case class BasicGCEvent(time: DateTime,
                         jvmAgeSeconds: Double,
                         gcType: String,
@@ -38,6 +41,9 @@ case class BasicGCEvent(time: DateTime,
 
   override def heap: Option[SizeDelta] = Some(heapDelta)
 
+  /**
+    * Milliseconds since the JVM started.
+    */
   override def jvmAgeMillis: Long = (jvmAgeSeconds * 1000).toLong
 
   /**
@@ -59,6 +65,13 @@ case class BasicGCEvent(time: DateTime,
   }
 }
 
+/**
+  * Region size
+  *
+  * @param start Space used before collection
+  * @param end Space used after collection (hopefully less than start)
+  * @param capacity Maximum value start or end can take
+  */
 case class SizeDelta(start: String, end: String, capacity: String) {
   def startBytes = toBytes(start)
   def endBytes = toBytes(end)
