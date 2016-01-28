@@ -507,4 +507,13 @@ class ParserTest extends GcLogTest {
     events.size shouldBe 12
   }
 
+  "Java 8 promotion failure" should "parse" in {
+    val input = """2016-01-28T16:20:24.390+1100: 94045.178: [GC (Allocation Failure) --[PSYoungGen: 1256250K->1256250K(1256448K)] 4037337K->4052791K(4052992K), 0.4414726 secs] [Times: user=0.51 sys=0.00, real=0.45 secs]"""
+    val events = parseLog[BasicGCEvent](input)
+
+    events(0).gcType shouldBe "GC--"
+    events(0).gcCause shouldBe "Allocation Failure"
+    events(0).pauseSeconds shouldBe 0.4414726
+  }
+
 }

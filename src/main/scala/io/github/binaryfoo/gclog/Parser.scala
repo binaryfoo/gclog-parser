@@ -28,6 +28,7 @@ object Parser {
   }
   private val GcType = CharIn('a' to 'z', 'A' to 'Z', Seq('-'), Seq(' ')).rep.!.map(_.trim)
   private val GcCause = "(" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ") "
+  private val Java8PromotionFailureFlag = "--".!
   private val BasicEvent = ((Number ~ ": ").? ~ Ignored.? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = StringIn(" ", ", ") | Pass) ~ ", " ~ Seconds ~ " secs]").map {
     case (collections, pause) =>
       val heapDelta = collections.collectFirst { case heap: SizeDelta => heap }.get
@@ -47,10 +48,10 @@ object Parser {
       case (_) => CmsGcEvent(null, 0, gcType, gcCause.orNull, 0)
     }
   }
-  private val CollectionStats = "[" ~ (GcType ~ GcCause.?).flatMap {
-    case (gcType, None) if gcType.startsWith("CMS") => cmsEvent(gcType, None)
-    case (gcType, c@Some(gcCause)) if gcCause.startsWith("CMS") => cmsEvent(gcType, c)
-    case (gcType, gcCause) => basicEvent(gcType, gcCause)
+  private val CollectionStats = "[" ~ (GcType ~ GcCause.? ~ Java8PromotionFailureFlag.?).flatMap {
+    case (gcType, None, _) if gcType.startsWith("CMS") => cmsEvent(gcType, None)
+    case (gcType, c@Some(gcCause), _) if gcCause.startsWith("CMS") => cmsEvent(gcType, c)
+    case (gcType, gcCause, typePart2) => basicEvent(gcType + typePart2.getOrElse(""), gcCause)
   }
 
   val GcLine = ((Timestamp ~ ": ").? ~ Seconds ~/ ": " ~ CollectionStats).map {
