@@ -16,25 +16,25 @@ case class BasicGCEvent(time: DateTime,
                         generationDeltas: Seq[GenerationDelta],
                         pauseSeconds: Double) extends GCEvent {
 
-  override def toSeq: Seq[(String, String)] = {
-    val seq = mutable.ArrayBuffer[(String, String)]()
-    if (time != null) seq += "datetime" -> time.toString("yyyy-MM-dd HH:mm:ss.SSS")
-    seq += "age" -> jvmAgeSeconds.toString
+  def toExport: Seq[(String, Any)] = {
+    val seq = mutable.ArrayBuffer[(String, Any)]()
+    if (time != null) seq += "datetime" -> time
+    seq += "age" -> jvmAgeSeconds
     seq += "type" -> gcType
     if (gcCause != null) seq += "cause" -> gcCause
-    seq += "pause" -> pauseSeconds.toString
-    seq += "heapBefore" -> expandSuffix(heapDelta.start)
-    seq += "heapAfter" -> expandSuffix(heapDelta.end)
-    seq += "heapReclaimed" -> heapDelta.reclaimedBytes.toString
-    seq += "heapMax" -> expandSuffix(heapDelta.capacity)
+    seq += "pause" -> pauseSeconds
+    seq += "heapBefore" -> toBytes(heapDelta.start)
+    seq += "heapAfter" -> toBytes(heapDelta.end)
+    seq += "heapReclaimed" -> heapDelta.reclaimedBytes
+    seq += "heapMax" -> toBytes(heapDelta.capacity)
     for (GenerationDelta(name, delta) <- generationDeltas) {
-      seq += s"${name}Before" -> expandSuffix(delta.start)
-      seq += s"${name}After" -> expandSuffix(delta.end)
-      seq += s"${name}Reclaimed" -> delta.reclaimedBytes.toString
-      seq += s"${name}Max" -> expandSuffix(delta.capacity)
+      seq += s"${name}Before" -> toBytes(delta.start)
+      seq += s"${name}After" -> toBytes(delta.end)
+      seq += s"${name}Reclaimed" -> delta.reclaimedBytes
+      seq += s"${name}Max" -> toBytes(delta.capacity)
     }
     promotedBytes.foreach { promoted =>
-      seq += "promoted" -> promoted.toString
+      seq += "promoted" -> promoted
     }
     seq.toSeq
   }

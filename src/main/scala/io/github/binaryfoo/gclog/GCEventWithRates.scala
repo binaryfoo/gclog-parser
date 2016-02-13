@@ -10,11 +10,11 @@ case class GCEventWithRates(base: GCEvent,
                             millisSinceLastEvent: Long) extends GCEvent {
   override def time: DateTime = base.time
   override def gcType: String = base.gcType
-  override def toSeq: Seq[(String, String)] = {
-    base.toSeq ++ Seq(
-      "heapAllocated" -> bytesAllocatedSinceLastEvent.toString,
-      "heapAllocationRate" -> heapAllocationRate.toString,
-      "promotionRate" -> promotionRate.toString
+  override def toExport: Seq[(String, Any)] = {
+    base.toExport ++ Seq(
+      "heapAllocated" -> bytesAllocatedSinceLastEvent,
+      "heapAllocationRate" -> heapAllocationRate,
+      "promotionRate" -> promotionRate
     )
   }
   override def heap: Option[SizeDelta] = base.heap

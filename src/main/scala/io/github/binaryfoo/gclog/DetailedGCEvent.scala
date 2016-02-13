@@ -1,6 +1,6 @@
 package io.github.binaryfoo.gclog
 
-import SuffixExpander.expandSuffix
+import SuffixExpander.toBytes
 import org.joda.time.DateTime
 
 /**
@@ -10,13 +10,13 @@ case class DetailedGCEvent(e: BasicGCEvent, regions: Seq[RegionDelta]) extends G
 
   override def time: DateTime = e.time
   override def gcType: String = e.gcType
-  override def toSeq: Seq[(String, String)] = {
-    (e.toSeq ++ regions.flatMap { case RegionDelta(name, start, end, startCapacity, endCapacity) =>
+  override def toExport: Seq[(String, Any)] = {
+    (e.toExport ++ regions.flatMap { case RegionDelta(name, start, end, startCapacity, endCapacity) =>
       Seq(
-        s"${name}Before" -> expandSuffix(start),
-        s"${name}After" -> expandSuffix(end),
-        s"${name}CapacityBefore" -> expandSuffix(startCapacity),
-        s"${name}CapacityAfter" -> expandSuffix(endCapacity)
+        s"${name}Before" -> toBytes(start),
+        s"${name}After" -> toBytes(end),
+        s"${name}CapacityBefore" -> toBytes(startCapacity),
+        s"${name}CapacityAfter" -> toBytes(endCapacity)
       )
     }).distinct
   }

@@ -13,13 +13,14 @@ case class CmsGcEvent(time: DateTime,
                       gcType: String,
                       gcCause: String,
                       pauseSeconds: Double) extends GCEvent {
-  override def toSeq: Seq[(String, String)] = {
-    val seq = mutable.ArrayBuffer[(String, String)]()
-    if (time != null) seq += "datetime" -> time.toString("yyyy-MM-dd HH:mm:ss.SSS")
-    seq += "age" -> jvmAgeSeconds.toString
+
+  override def toExport: Seq[(String, Any)] = {
+    val seq = mutable.ArrayBuffer[(String, Any)]()
+    if (time != null) seq += "datetime" -> time
+    seq += "age" -> jvmAgeSeconds
     seq += "type" -> gcType
     if (gcCause != null) seq += "cause" -> gcCause
-    seq += "pause" -> pauseSeconds.toString
+    seq += "pause" -> pauseSeconds
     seq.toSeq
   }
 
