@@ -20,25 +20,29 @@ object Parser {
   }
 
   private val IgnoredLine = CharsWhile(_ != '\n').? ~ "\n"
-  private val Ignored = ("\nDesired" ~ IgnoredLine) | ("- age" ~ IgnoredLine)
+  private val IgnoredTenuringTable = "- age" ~ IgnoredLine
+  private val DesiredSurvivorSize = ("\nDesired survivor size " ~ AtLeastDigits(1).! ~ " bytes, new threshold " ~ AtLeastDigits(1).! ~ " (" ~ IgnoredLine ~ IgnoredTenuringTable.rep).map {
+    case (desiredSize, newThreshold) => TenuringDistribution(desiredSize, newThreshold)
+  }
 
   private val GenerationName = CharIn('a' to 'z', 'A' to 'Z', '0' to '9', Seq(' '), Seq('-')).rep
-  val GenerationStats = ((Number ~ ": ").? ~ "[" ~ GenerationName.! ~ Ignored.rep.? ~ ": " ~ SizeStats ~ (", " ~ Number ~ " secs").? ~ "]").map {
-    case (name, delta) => GenerationDelta(name, delta)
+  val GenerationStats = ((Number ~ ": ").? ~ "[" ~ GenerationName.! ~ DesiredSurvivorSize.? ~ ": " ~ SizeStats ~ (", " ~ Number ~ " secs").? ~ "]").map {
+    case (name, strayTenuringDistribution, delta) => (GenerationDelta(name, delta), strayTenuringDistribution)
   }
   private val GcType = CharIn('a' to 'z', 'A' to 'Z', Seq('-'), Seq(' ')).rep.!.map(_.trim)
   private val GcCause = "(" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ") "
   private val Java8PromotionFailureFlag = "--".!
-  private val BasicEvent = ((Number ~ ": ").? ~ Ignored.? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = StringIn(" ", ", ") | Pass) ~ ", " ~ Seconds ~ " secs]").map {
+  private val BasicEvent = ((Number ~ ": ").? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = StringIn(" ", ", ") | Pass) ~ ", " ~ Seconds ~ " secs]").map {
     case (collections, pause) =>
       val heapDelta = collections.collectFirst { case heap: SizeDelta => heap }.get
-      val generationDeltas = collections.collect { case generation: GenerationDelta => generation }
-      (heapDelta, generationDeltas, pause)
+      val generationDeltas = collections.collect { case (generation: GenerationDelta, _) => generation }
+      val strayTenuringDistribution = collections.collectFirst { case (_, Some(d: TenuringDistribution)) => d }
+      (heapDelta, generationDeltas, pause, strayTenuringDistribution)
   }
-  private def basicEvent(gcType: String, gcCause: Option[String]) = {
+  private def basicEvent(gcType: String, gcCause: Option[String], tenuringDistribution: Option[TenuringDistribution]): P[BasicGCEvent] = {
     BasicEvent.map {
-      case (heapDelta, generationDeltas, pause) =>
-        BasicGCEvent(null, 0, gcType, gcCause.orNull, heapDelta, generationDeltas, pause)
+      case (heapDelta, generationDeltas, pause, strayTenuringDistribution) =>
+        BasicGCEvent(null, 0, gcType, gcCause.orNull, heapDelta, generationDeltas, pause, tenuringDistribution.orElse(strayTenuringDistribution))
     }
   }
   private val CmsEvent = "]" | ((AnyChar ~ !"real=").rep ~ " real=" ~ Seconds ~ " secs]")
@@ -48,10 +52,10 @@ object Parser {
       case (_) => CmsGcEvent(null, 0, gcType, gcCause.orNull, 0)
     }
   }
-  private val CollectionStats = "[" ~ (GcType ~ GcCause.? ~ Java8PromotionFailureFlag.?).flatMap {
-    case (gcType, None, _) if gcType.startsWith("CMS") => cmsEvent(gcType, None)
-    case (gcType, c@Some(gcCause), _) if gcCause.startsWith("CMS") => cmsEvent(gcType, c)
-    case (gcType, gcCause, typePart2) => basicEvent(gcType + typePart2.getOrElse(""), gcCause)
+  private val CollectionStats = "[" ~ (GcType ~ GcCause.? ~ Java8PromotionFailureFlag.? ~ DesiredSurvivorSize.?).flatMap {
+    case (gcType, None, _, _) if gcType.startsWith("CMS") => cmsEvent(gcType, None)
+    case (gcType, c@Some(gcCause), _, _) if gcCause.startsWith("CMS") => cmsEvent(gcType, c)
+    case (gcType, gcCause, typePart2, tenuringDistribution) => basicEvent(gcType + typePart2.getOrElse(""), gcCause, tenuringDistribution)
   }
 
   val GcLine = ((Timestamp ~ ": ").? ~ Seconds ~/ ": " ~ CollectionStats).map {

@@ -1,6 +1,6 @@
 package io.github.binaryfoo.gclog
 
-import io.github.binaryfoo.gclog.SuffixExpander.{expandSuffix, toBytes}
+import io.github.binaryfoo.gclog.SuffixExpander.toBytes
 import org.joda.time.DateTime
 
 import scala.collection.mutable
@@ -14,7 +14,8 @@ case class BasicGCEvent(time: DateTime,
                         gcCause: String,
                         heapDelta: SizeDelta,
                         generationDeltas: Seq[GenerationDelta],
-                        pauseSeconds: Double) extends GCEvent {
+                        pauseSeconds: Double,
+                        tenuringDistribution: Option[TenuringDistribution] = None) extends GCEvent {
 
   def toExport: Seq[(String, Any)] = {
     val seq = mutable.ArrayBuffer[(String, Any)]()
@@ -36,7 +37,11 @@ case class BasicGCEvent(time: DateTime,
     promotedBytes.foreach { promoted =>
       seq += "promoted" -> promoted
     }
-    seq.toSeq
+    tenuringDistribution.foreach { case TenuringDistribution(desiredSurviorSize, newThreshold) =>
+      seq += "desiredSurviorSize" -> desiredSurviorSize
+      seq += "newThreshold" -> newThreshold
+    }
+    seq
   }
 
   override def heap: Option[SizeDelta] = Some(heapDelta)
@@ -79,4 +84,11 @@ case class SizeDelta(start: String, end: String, capacity: String) {
 }
 
 case class GenerationDelta(name: String, delta: SizeDelta)
+
+/**
+  * From -XX:+PrintTenuringDistribution
+  *
+  * Eg. 'Desired survivor size 268435456 bytes, new threshold 7 (max 15)'
+  */
+case class TenuringDistribution(desiredSurviorSize: String, newThreshold: String)
 

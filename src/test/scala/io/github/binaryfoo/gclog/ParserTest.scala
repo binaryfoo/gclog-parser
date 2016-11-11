@@ -75,7 +75,7 @@ class ParserTest extends GcLogTest {
   }
 
   "Generation stats" should "be parsed" in {
-    val Parsed.Success(value, _) = GenerationStats.parse("[PSYoungGen: 14194K->0K(1376448K)]")
+    val Parsed.Success((value, _), _) = GenerationStats.parse("[PSYoungGen: 14194K->0K(1376448K)]")
     value.name shouldBe "PSYoungGen"
     value.delta shouldBe SizeDelta("14194K", "0K", "1376448K")
   }
@@ -379,6 +379,8 @@ class ParserTest extends GcLogTest {
                                           |(PSYoungGenReclaimed,1017914368)
                                           |(PSYoungGenMax,1183580160)
                                           |(promoted,144707584)
+                                          |(desiredSurviorSize,248053760)
+                                          |(newThreshold,1)
                                           |(PSYoungGenCapacityBefore,1096089600)
                                           |(PSYoungGenCapacityAfter,1183580160)
                                           |(edenBefore,100)
@@ -514,6 +516,12 @@ class ParserTest extends GcLogTest {
     events(0).gcType shouldBe "GC--"
     events(0).gcCause shouldBe "Allocation Failure"
     events(0).pauseSeconds shouldBe 0.4414726
+  }
+
+  "Survivor ratio from -XX:+PrintTenuringDistribution" should "be parsed" in {
+    val events = Parser.parseWithHeapStats(testInput("fragment.txt"))
+    val firstEvent = events.head
+    firstEvent.e.tenuringDistribution shouldBe Some(TenuringDistribution("248053760", "1"))
   }
 
 }

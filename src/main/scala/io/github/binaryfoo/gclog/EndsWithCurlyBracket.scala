@@ -1,14 +1,15 @@
 package io.github.binaryfoo.gclog
 
+import fastparse.all._
 import fastparse.core.ParseCtx
 
-object EndsWithCurlyBracket extends fastparse.core.Parser[Unit] {
+object EndsWithCurlyBracket extends fastparse.core.Parser[Unit, Char, String] {
 
-  def parseRec(cfg: ParseCtx, index: Int) = {
+  def parseRec(cfg: ParseCtx[Char, String], index: Int) = {
     val input = cfg.input
     val last = input.length - 1
     if (input(last) != '}') fail(cfg.failure, last)
-    else success(cfg.success, (), last + 1, Nil, false)
+    else success(cfg.success, (), last + 1, Set.empty, false)
   }
 }
 
@@ -19,22 +20,22 @@ object Digits {
   }
 }
 
-case class Digits(n: Int) extends fastparse.core.Parser[Unit] {
-  def parseRec(cfg: ParseCtx, index: Int) = {
+case class Digits(n: Int) extends fastparse.core.Parser[Unit, Char, String] {
+  def parseRec(cfg: ParseCtx[Char, String], index: Int) = {
     var curr = index
     val input = cfg.input
     while(curr < input.length && Digits.isDigit(input(curr))) curr += 1
     if (curr - index != n) fail(cfg.failure, curr)
-    else success(cfg.success, (), curr, Nil, false)
+    else success(cfg.success, (), curr, Set.empty, false)
   }
 }
 
-case class AtLeastDigits(n: Int) extends fastparse.core.Parser[Unit] {
-  def parseRec(cfg: ParseCtx, index: Int) = {
+case class AtLeastDigits(n: Int) extends fastparse.core.Parser[Unit, Char, String] {
+  def parseRec(cfg: ParseCtx[Char, String], index: Int) = {
     var curr = index
     val input = cfg.input
     while(curr < input.length && Digits.isDigit(input(curr))) curr += 1
     if (curr - index < n) fail(cfg.failure, curr)
-    else success(cfg.success, (), curr, Nil, false)
+    else success(cfg.success, (), curr, Set.empty, false)
   }
 }
