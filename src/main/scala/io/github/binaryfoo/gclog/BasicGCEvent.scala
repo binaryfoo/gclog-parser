@@ -38,7 +38,7 @@ case class BasicGCEvent(time: DateTime,
       seq += "promoted" -> promoted
     }
     tenuringDistribution.foreach { case TenuringDistribution(desiredSurviorSize, newThreshold) =>
-      seq += "desiredSurviorSize" -> desiredSurviorSize
+      seq += "desiredSurvivorSize" -> desiredSurviorSize
       seq += "newThreshold" -> newThreshold
     }
     seq

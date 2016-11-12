@@ -379,7 +379,7 @@ class ParserTest extends GcLogTest {
                                           |(PSYoungGenReclaimed,1017914368)
                                           |(PSYoungGenMax,1183580160)
                                           |(promoted,144707584)
-                                          |(desiredSurviorSize,248053760)
+                                          |(desiredSurvivorSize,248053760)
                                           |(newThreshold,1)
                                           |(PSYoungGenCapacityBefore,1096089600)
                                           |(PSYoungGenCapacityAfter,1183580160)
