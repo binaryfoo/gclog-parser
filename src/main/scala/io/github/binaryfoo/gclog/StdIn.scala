@@ -6,8 +6,8 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 object StdIn {
-  def readAllInput(): String = {
-    readToEnd(Console.in, mutable.ArrayBuffer[String]())
+  def readAllInput(in: BufferedReader): String = {
+    readToEnd(in, mutable.ArrayBuffer[String]())
   }
 
   @tailrec

@@ -1,5 +1,7 @@
 package io.github.binaryfoo.gclog
 
+import java.io.{BufferedReader, File, FileReader}
+
 import io.github.binaryfoo.gclog.output._
 import scopt.OptionParser
 
@@ -10,16 +12,22 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     inputParser().parse(args, CmdLineOptions()).foreach { options =>
-      val input = StdIn.readAllInput()
-      val baseEvents = if (options.heapStats)
-        Parser.parseWithHeapStats(input)
-      else
-        Parser.parseLog(input)
-      val eventsWithRates = new RateCalculator().apply(baseEvents)
-      val events = options.limit.map(n => eventsWithRates.take(n)).getOrElse(eventsWithRates)
-
+      val readers = options.inputs match {
+        case Nil => Seq(Console.in)
+        case files => files.map(f => new BufferedReader(new FileReader(f)))
+      }
       val sink = options.sink
-      options.format.write(events, sink)
+      for (reader <- readers) {
+        // could be smarter than reading all to memory...
+        val input = StdIn.readAllInput(reader)
+        val baseEvents = if (options.heapStats)
+          Parser.parseWithHeapStats(input)
+        else
+          Parser.parseLog(input)
+        val eventsWithRates = new RateCalculator().apply(baseEvents)
+        val events = options.limit.map(n => eventsWithRates.take(n)).getOrElse(eventsWithRates)
+        options.format.write(events, sink)
+      }
       sink.close()
     }
   }
@@ -57,11 +65,16 @@ object Main {
       opt[Int]('n', "limit") action { (limit, c) =>
         c.copy(limit = Some(limit))
       } text "Output at most N events"
+
+      arg[File]("<gc-log-file>") action { (file, c) =>
+        c.copy(inputs = c.inputs :+ file)
+      } text "GC log files to read. Defaults to standard input"
     }
   }
 }
 
-case class CmdLineOptions(heapStats: Boolean = false,
+case class CmdLineOptions(inputs: Seq[File] = Seq.empty,
+                          heapStats: Boolean = false,
                           format: OutputFormat = TsvOutputFormat(),
                           sink: OutputSink = StdOutSink,
                           limit: Option[Int] = None)
