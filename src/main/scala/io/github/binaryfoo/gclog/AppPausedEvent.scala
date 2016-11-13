@@ -4,8 +4,12 @@ import org.joda.time.DateTime
 
 import scala.collection.mutable
 
+object AppPausedEvent {
+  val GcType = "AppStopped"
+}
+
 case class AppPausedEvent(time: DateTime, jvmAgeSeconds: Double, stoppedSeconds: Double) extends GCEvent {
-  override def gcType: String = "AppStopped"
+  override def gcType: String = AppPausedEvent.GcType
 
   override def jvmAgeMillis: Long = (jvmAgeSeconds * 1000).toLong
 

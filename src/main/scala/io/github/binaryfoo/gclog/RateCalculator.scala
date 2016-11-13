@@ -4,7 +4,7 @@ import io.github.binaryfoo.gclog.SuffixExpander.toBytes
 
 class RateCalculator {
 
-  private var previous: GCEvent = null
+  private var previous: GCEvent = _
 
   def apply(events: Seq[GCEvent]): Seq[GCEventWithRates] = {
     for (e <- events) yield apply(e)
@@ -22,7 +22,7 @@ class RateCalculator {
       e.jvmAgeMillis - previous.jvmAgeMillis
     }
     previous = e
-    new GCEventWithRates(e, allocated, elapsedMillis)
+    GCEventWithRates(e, allocated, elapsedMillis)
   }
 
   def addRates(e: GCEvent): GCEventWithRates = apply(e)
