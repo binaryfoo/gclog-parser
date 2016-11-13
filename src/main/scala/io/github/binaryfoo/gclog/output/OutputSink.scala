@@ -1,6 +1,6 @@
 package io.github.binaryfoo.gclog.output
 
-import java.io.PrintWriter
+import java.io.{PrintStream, PrintWriter}
 import java.net.Socket
 
 trait OutputSink {
@@ -8,9 +8,11 @@ trait OutputSink {
   def close()
 }
 
-object StdOutSink extends OutputSink {
-  override def write(event: String): Unit = Console.out.println(event)
-  override def close(): Unit = Console.out.flush()
+object StdOutSink extends PrintStreamSink(Console.out)
+
+case class PrintStreamSink(out: PrintStream) extends OutputSink {
+  override def write(event: String): Unit = out.println(event)
+  override def close(): Unit = out.flush()
 }
 
 case class SocketSink(host: String = "localhost", port: Int = 2003) extends OutputSink {
