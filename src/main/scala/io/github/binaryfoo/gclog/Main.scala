@@ -1,7 +1,6 @@
 package io.github.binaryfoo.gclog
 
-import java.io.PrintStream
-
+import io.github.binaryfoo.gclog.output._
 import scopt.OptionParser
 
 /**
@@ -19,9 +18,9 @@ object Main {
       val eventsWithRates = new RateCalculator().apply(baseEvents)
       val events = options.limit.map(n => eventsWithRates.take(n)).getOrElse(eventsWithRates)
 
-      val w = Console.out
-      options.format.write(events, w)
-      w.flush()
+      val sink = options.sink
+      options.format.write(events, sink)
+      sink.close()
     }
   }
 
@@ -51,6 +50,10 @@ object Main {
         c.copy(format = GraphiteOutputFormat(prefix))
       } text "Metric path prefix for graphite output"
 
+      opt[String]("dest") action { (destination, c) =>
+        c.copy(sink = SocketSink(destination))
+      } text "host:port to receive the events"
+
       opt[Int]('n', "limit") action { (limit, c) =>
         c.copy(limit = Some(limit))
       } text "Output at most N events"
@@ -58,37 +61,7 @@ object Main {
   }
 }
 
-sealed trait OutputFormat {
-  def write(events: Seq[GCEventWithRates], w: PrintStream)
-}
-
-case class TsvOutputFormat(delimiter: String = "\t") extends OutputFormat {
-
-  override def write(events: Seq[GCEventWithRates], w: PrintStream): Unit = {
-    events.headOption.foreach { e =>
-      val header = e.toSeq.map(_._1).mkString(delimiter)
-      w.println(header)
-    }
-    events.foreach { e =>
-      val line = e.toSeq.map(_._2).mkString(delimiter)
-      w.println(line)
-    }
-  }
-
-}
-
-case class GraphiteOutputFormat(prefix: String = "gc") extends OutputFormat {
-  override def write(events: Seq[GCEventWithRates], w: PrintStream): Unit = {
-    for {
-      event <- events
-      timestamp = event.time.getMillis / 1000
-      (metricName, value) <- event.toSeq if metricName != "dateTime"
-    } {
-      // line protocol: <metric path> <metric value> <metric timestamp>
-      // <metric timestamp> is unix epoch time (seconds since 1970)
-      w.println(s"$prefix.$metricName $value $timestamp")
-    }
-  }
-}
-
-case class CmdLineOptions(heapStats: Boolean = false, format: OutputFormat = TsvOutputFormat(), limit: Option[Int] = None)
+case class CmdLineOptions(heapStats: Boolean = false,
+                          format: OutputFormat = TsvOutputFormat(),
+                          sink: OutputSink = StdOutSink,
+                          limit: Option[Int] = None)
