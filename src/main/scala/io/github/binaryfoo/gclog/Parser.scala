@@ -30,7 +30,7 @@ object Parser {
     case (name, strayTenuringDistribution, delta) => (GenerationDelta(name, delta), strayTenuringDistribution)
   }
   private val GcType = CharIn('a' to 'z', 'A' to 'Z', Seq('-'), Seq(' ')).rep.!.map(_.trim)
-  private val GcCause = "(" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ") "
+  private val GcCause = "(" ~ CharIn('a' to 'z', 'A' to 'Z', ' ' to ' ').rep.! ~ ")" ~ " ".rep
   private val Java8PromotionFailureFlag = "--".!
   private val BasicEvent = ((Number ~ ": ").? ~ " ".? ~ (GenerationStats | SizeStats).rep(sep = StringIn(" ", ", ") | Pass) ~ ", " ~ Seconds ~ " secs]").map {
     case (collections, pause) =>
@@ -52,17 +52,24 @@ object Parser {
       case (_) => CmsGcEvent(null, 0, gcType, gcCause.orNull, 0)
     }
   }
-  private val CollectionStats = "[" ~ (GcType ~ GcCause.? ~ Java8PromotionFailureFlag.? ~ DesiredSurvivorSize.?).flatMap {
+  private val CollectionStats = "[" ~/ (GcType ~ GcCause.? ~ Java8PromotionFailureFlag.? ~ DesiredSurvivorSize.?).flatMap {
     case (gcType, None, _, _) if gcType.startsWith("CMS") => cmsEvent(gcType, None)
     case (gcType, c@Some(gcCause), _, _) if gcCause.startsWith("CMS") => cmsEvent(gcType, c)
     case (gcType, gcCause, typePart2, tenuringDistribution) => basicEvent(gcType + typePart2.getOrElse(""), gcCause, tenuringDistribution)
   }
+  private val TotalAppStoppedTime = "Total time for which application threads were stopped: " ~ Seconds ~ IgnoredLine
+  private val AppStoppedEvent = ((Timestamp ~ ": ").? ~ Seconds ~ ": " ~ TotalAppStoppedTime).map {
+    case (timestamp, jvmAge, stoppedTime: Double) =>
+      AppPausedEvent(timestamp.orNull, jvmAge, stoppedTime)
+  }
 
-  val GcLine = ((Timestamp ~ ": ").? ~ Seconds ~/ ": " ~ CollectionStats).map {
+  val GcLine = ((Timestamp ~ ": ").? ~ Seconds ~ ": " ~/ (CollectionStats | TotalAppStoppedTime)).map {
     case (timestamp, jvmAge, b: BasicGCEvent) =>
       b.copy(time = timestamp.orNull, jvmAgeSeconds = jvmAge)
     case (timestamp, jvmAge, c: CmsGcEvent) =>
       c.copy(time = timestamp.orNull, jvmAgeSeconds = jvmAge)
+    case (timestamp, jvmAge, stoppedTime: Double) =>
+      AppPausedEvent(timestamp.orNull, jvmAge, stoppedTime)
   }
 
   private val GcLog = (GcLine | IgnoredLine).rep
@@ -117,17 +124,17 @@ object Parser {
   /**
     * Use to parse data written when -XX:+PrintHeapAtGC option is passed to the JVM.
     */
-  def parseWithHeapStats(log: String): Seq[DetailedGCEvent] = {
-    val Parsed.Success(value, _) = (DetailedEvent | IgnoredLine).rep.parse(log)
+  def parseWithHeapStats(log: String): Seq[GCEvent] = {
+    val Parsed.Success(value, _) = (DetailedEvent | AppStoppedEvent | IgnoredLine).rep.parse(log)
     value.collect {
-      case e: DetailedGCEvent => e
+      case e: GCEvent => e
     }
   }
 
   def incrementalParse(lines: String): IncrementalResult = {
     IncrementalParser.parse(lines) match {
-      case Parsed.Success(value, _) => GcEventParsed(value)
-      case Parsed.Failure(lastParser, index, _) =>
+      case Parsed.Success(value: GCEvent, _) => GcEventParsed(value)
+      case f@Parsed.Failure(lastParser, index, _) =>
         // heuristic: if we've matched at least half the first line assume we're gonna match
         val halfwayMark = (lines.indexOf('\n') match {
           case -1 => lines.length

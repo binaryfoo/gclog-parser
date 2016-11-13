@@ -1,0 +1,40 @@
+Java HotSpot(TM) 64-Bit Server VM (25.65-b01) for linux-amd64 JRE (1.8.0_65-b17), built on Oct  6 2015 17:16:12 by "java_re" with gcc 4.3.0 20080428 (Red Hat 4.3.0-8)
+Memory: 4k page, physical 24609980k(20690076k free), swap 1048572k(1048572k free)
+CommandLine flags: -XX:InitialHeapSize=6442450944 -XX:+ManagementServer -XX:MaxHeapSize=6442450944 -XX:+PrintGC -XX:+PrintGCApplicationStoppedTime -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintHeapAtGC -XX:+PrintTenuringDistribution -XX:+UseCompressedClassPointers -XX:+UseCompressedOops -XX:+UseParallelGC
+2016-11-10T15:42:24.041+1100: 0.119: Total time for which application threads were stopped: 0.0001057 seconds, Stopping threads took: 0.0000176 seconds
+2016-11-10T15:42:24.060+1100: 0.138: Total time for which application threads were stopped: 0.0000915 seconds, Stopping threads took: 0.0000299 seconds
+2016-11-10T15:42:24.062+1100: 0.140: Total time for which application threads were stopped: 0.0000481 seconds, Stopping threads took: 0.0000149 seconds
+2016-11-10T15:42:24.109+1100: 0.187: Total time for which application threads were stopped: 0.0001067 seconds, Stopping threads took: 0.0000314 seconds
+2016-11-10T15:42:24.189+1100: 0.267: Total time for which application threads were stopped: 0.0011284 seconds, Stopping threads took: 0.0009823 seconds
+2016-11-10T15:42:24.291+1100: 0.369: Total time for which application threads were stopped: 0.0001906 seconds, Stopping threads took: 0.0000298 seconds
+2016-11-10T15:42:24.993+1100: 1.071: Total time for which application threads were stopped: 0.0003386 seconds, Stopping threads took: 0.0000345 seconds
+2016-11-10T15:42:25.010+1100: 1.088: Total time for which application threads were stopped: 0.0002565 seconds, Stopping threads took: 0.0000334 seconds
+2016-11-10T15:42:25.084+1100: 1.162: Total time for which application threads were stopped: 0.0002842 seconds, Stopping threads took: 0.0000365 seconds
+2016-11-10T15:42:25.229+1100: 1.307: Total time for which application threads were stopped: 0.0003240 seconds, Stopping threads took: 0.0000404 seconds
+2016-11-10T15:42:25.231+1100: 1.309: Total time for which application threads were stopped: 0.0001394 seconds, Stopping threads took: 0.0000253 seconds
+2016-11-10T15:42:25.247+1100: 1.325: Total time for which application threads were stopped: 0.0002032 seconds, Stopping threads took: 0.0000296 seconds
+2016-11-10T15:42:25.247+1100: 1.325: Total time for which application threads were stopped: 0.0001379 seconds, Stopping threads took: 0.0000261 seconds
+2016-11-10T15:42:25.377+1100: 1.455: Total time for which application threads were stopped: 0.0003746 seconds, Stopping threads took: 0.0000369 seconds
+2016-11-10T15:42:25.640+1100: 1.718: Total time for which application threads were stopped: 0.0002339 seconds, Stopping threads took: 0.0000381 seconds
+{Heap before GC invocations=1 (full 0):
+ PSYoungGen      total 1835008K, used 1572864K [0x0000000740000000, 0x00000007c0000000, 0x00000007c0000000)
+  eden space 1572864K, 100% used [0x0000000740000000,0x00000007a0000000,0x00000007a0000000)
+  from space 262144K, 0% used [0x00000007b0000000,0x00000007b0000000,0x00000007c0000000)
+  to   space 262144K, 0% used [0x00000007a0000000,0x00000007a0000000,0x00000007b0000000)
+ ParOldGen       total 4194304K, used 0K [0x0000000640000000, 0x0000000740000000, 0x0000000740000000)
+  object space 4194304K, 0% used [0x0000000640000000,0x0000000640000000,0x0000000740000000)
+ Metaspace       used 19188K, capacity 19598K, committed 19968K, reserved 1067008K
+  class space    used 2142K, capacity 2231K, committed 2304K, reserved 1048576K
+2016-11-10T15:42:25.967+1100: 2.045: [GC (Allocation Failure)
+Desired survivor size 268435456 bytes, new threshold 7 (max 15)
+[PSYoungGen: 1572864K->18840K(1835008K)] 1572864K->18872K(6029312K), 0.0191892 secs] [Times: user=0.04 sys=0.01, real=0.02 secs]
+Heap after GC invocations=1 (full 0):
+ PSYoungGen      total 1835008K, used 18840K [0x0000000740000000, 0x00000007c0000000, 0x00000007c0000000)
+  eden space 1572864K, 0% used [0x0000000740000000,0x0000000740000000,0x00000007a0000000)
+  from space 262144K, 7% used [0x00000007a0000000,0x00000007a1266388,0x00000007b0000000)
+  to   space 262144K, 0% used [0x00000007b0000000,0x00000007b0000000,0x00000007c0000000)
+ ParOldGen       total 4194304K, used 32K [0x0000000640000000, 0x0000000740000000, 0x0000000740000000)
+  object space 4194304K, 0% used [0x0000000640000000,0x0000000640008000,0x0000000740000000)
+ Metaspace       used 19188K, capacity 19598K, committed 19968K, reserved 1067008K
+  class space    used 2142K, capacity 2231K, committed 2304K, reserved 1048576K
+}

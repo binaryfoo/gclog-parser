@@ -261,7 +261,7 @@ class ParserTest extends GcLogTest {
   "Heap statistics" should "be parseable" in {
     val events = Parser.parseWithHeapStats(testInput("fragment.txt"))
     events.size shouldBe 2
-    events(0).regions.mkString("\n") shouldBe """RegionDelta(PSYoungGen,1070376K,76319K,1070400K,1155840K)
+    events(0).asInstanceOf[DetailedGCEvent].regions.mkString("\n") shouldBe """RegionDelta(PSYoungGen,1070376K,76319K,1070400K,1155840K)
                                                 |RegionDelta(eden,100%,0%,910272K,900992K)
                                                 |RegionDelta(from,99%,29%,160128K,254848K)
                                                 |RegionDelta(to,0%,0%,254848K,242240K)
@@ -311,7 +311,7 @@ class ParserTest extends GcLogTest {
   "CMS heap statistics" should "be parseable" in {
     val events = Parser.parseWithHeapStats(testInput("cms-fragment.txt"))
     events.size shouldBe 1
-    events(0).regions.mkString("\n") shouldBe """RegionDelta(par new generation,838848K,5616K,943680K,943680K)
+    events(0).asInstanceOf[DetailedGCEvent].regions.mkString("\n") shouldBe """RegionDelta(par new generation,838848K,5616K,943680K,943680K)
                                                 |RegionDelta(eden,100%,0%,838848K,838848K)
                                                 |RegionDelta(from,0%,5%,104832K,104832K)
                                                 |RegionDelta(to,0%,0%,104832K,104832K)
@@ -520,8 +520,28 @@ class ParserTest extends GcLogTest {
 
   "Survivor ratio from -XX:+PrintTenuringDistribution" should "be parsed" in {
     val events = Parser.parseWithHeapStats(testInput("fragment.txt"))
-    val firstEvent = events.head
+    val firstEvent = events.head.asInstanceOf[DetailedGCEvent]
     firstEvent.e.tenuringDistribution shouldBe Some(TenuringDistribution("248053760", "1"))
+  }
+
+  "Total time from -XX:+PrintGCApplicationStoppedTime" should "be ignored" in {
+    val events = Parser.parseLog[GCEvent](testInput("fragment-with-wait-times.txt"))
+    val firstEvent = events.head
+    firstEvent.time shouldBe new DateTime(2016, 11, 10, 15, 42, 24, 41, Plus11)
+    firstEvent.gcType shouldBe "AppStopped"
+    events(15).time shouldBe new DateTime(2016, 11, 10, 15, 42, 25, 967, Plus11)
+    events(15).gcType shouldBe "GC"
+    events.size shouldBe 16
+  }
+
+  "Total time from -XX:+PrintGCApplicationStoppedTime" should "be ignored when parsing heap details" in {
+    val events = Parser.parseWithHeapStats(testInput("fragment-with-wait-times.txt"))
+    val firstEvent = events.head
+    firstEvent.time shouldBe new DateTime(2016, 11, 10, 15, 42, 24, 41, Plus11)
+    firstEvent.gcType shouldBe "AppStopped"
+    events(15).time shouldBe new DateTime(2016, 11, 10, 15, 42, 25, 967, Plus11)
+    events(15).gcType shouldBe "GC"
+    events.size shouldBe 16
   }
 
 }
