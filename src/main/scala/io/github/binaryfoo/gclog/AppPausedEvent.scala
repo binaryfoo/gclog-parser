@@ -18,7 +18,7 @@ case class AppPausedEvent(time: DateTime, jvmAgeSeconds: Double, stoppedSeconds:
     if (time != null) seq += "datetime" -> time
     seq += "age" -> jvmAgeSeconds
     seq += "type" -> gcType
-    seq += "stoppedSeconds" -> stoppedSeconds
+    seq += "stoppedSeconds" -> stoppedSeconds.formatted("%f")
     seq
   }
 

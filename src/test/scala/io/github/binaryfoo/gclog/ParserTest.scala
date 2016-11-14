@@ -343,7 +343,7 @@ class ParserTest extends GcLogTest {
   }
 
   "Incremental parse" should "ignore unparseable lines in face of matching prefix" in {
-    val lines = """28922.782: Total time for which application threads were stopped: 2.9031668 seconds, Stopping threads took: 0.0010975 seconds
+    val lines = """28922.782: rubbish that's longish
                    |28930.272: [Full GC (Allocation Failure) 28930.272: [CMS: 819200K->819199K(819200K), 3.1445149 secs] 1762880K->1289710K(1762880K), [Metaspace: 21984K->21984K(1069056K)], 3.1446281 secs] [Times: user=3.14 sys=0.00, real=3.14 secs]
                    |""".stripMargin.split("\n")
 
@@ -524,7 +524,7 @@ class ParserTest extends GcLogTest {
     firstEvent.e.tenuringDistribution shouldBe Some(TenuringDistribution("248053760", "1"))
   }
 
-  "Total time from -XX:+PrintGCApplicationStoppedTime" should "be ignored" in {
+  "Total time from -XX:+PrintGCApplicationStoppedTime" should "be parsed" in {
     val events = Parser.parseLog[GCEvent](testInput("fragment-with-wait-times.txt"))
     val firstEvent = events.head
     firstEvent.time shouldBe new DateTime(2016, 11, 10, 15, 42, 24, 41, Plus11)
@@ -534,7 +534,7 @@ class ParserTest extends GcLogTest {
     events.size shouldBe 16
   }
 
-  "Total time from -XX:+PrintGCApplicationStoppedTime" should "be ignored when parsing heap details" in {
+  "Total time from -XX:+PrintGCApplicationStoppedTime" should "be parsed when parsing heap details" in {
     val events = Parser.parseWithHeapStats(testInput("fragment-with-wait-times.txt"))
     val firstEvent = events.head
     firstEvent.time shouldBe new DateTime(2016, 11, 10, 15, 42, 24, 41, Plus11)
@@ -542,6 +542,15 @@ class ParserTest extends GcLogTest {
     events(15).time shouldBe new DateTime(2016, 11, 10, 15, 42, 25, 967, Plus11)
     events(15).gcType shouldBe "GC"
     events.size shouldBe 16
+  }
+
+  "Total time from -XX:+PrintGCApplicationStoppedTime" should "be parsed when parsed incrementally" in {
+    val lines = "2016-11-10T15:42:24.041+1100: 0.119: Total time for which application threads were stopped: 0.0001057 seconds, Stopping threads took: 0.0000176 seconds"
+    val result = Parser.incrementalParse(lines)
+    result shouldBe a [GcEventParsed]
+    val GcEventParsed(event) = result
+    event.time shouldBe new DateTime(2016, 11, 10, 15, 42, 24, 41, Plus11)
+    event.gcType shouldBe "AppStopped"
   }
 
 }
