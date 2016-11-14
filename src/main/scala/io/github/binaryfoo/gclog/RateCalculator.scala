@@ -11,18 +11,22 @@ class RateCalculator {
   }
 
   def apply(e: GCEvent): GCEventWithRates = {
-    val allocated = if (previous == null) {
-      e.heap.map(d => d.startBytes).getOrElse(0L)
-    } else {
-      bytesAllocatedSince(e, previous)
+    e match {
+      case _: AppPausedEvent => GCEventWithRates(e, 0, 0)
+      case _ =>
+        val allocated = if (previous == null) {
+          e.heap.map(d => d.startBytes).getOrElse(0L)
+        } else {
+          bytesAllocatedSince(e, previous)
+        }
+        val elapsedMillis = if (previous == null) {
+          e.jvmAgeMillis
+        } else {
+          e.jvmAgeMillis - previous.jvmAgeMillis
+        }
+        previous = e
+        GCEventWithRates(e, allocated, elapsedMillis)
     }
-    val elapsedMillis = if (previous == null) {
-      e.jvmAgeMillis
-    } else {
-      e.jvmAgeMillis - previous.jvmAgeMillis
-    }
-    previous = e
-    GCEventWithRates(e, allocated, elapsedMillis)
   }
 
   def addRates(e: GCEvent): GCEventWithRates = apply(e)

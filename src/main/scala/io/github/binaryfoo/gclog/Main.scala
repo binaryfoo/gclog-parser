@@ -24,8 +24,7 @@ object Main {
           Parser.parseWithHeapStats(input)
         else
           Parser.parseLog(input)
-        val collectionEvents = baseEvents.filterNot(_.gcType == AppPausedEvent.GcType)
-        val eventsWithRates = new RateCalculator().apply(collectionEvents)
+        val eventsWithRates = new RateCalculator().apply(baseEvents)
         val events = options.limit.map(n => eventsWithRates.take(n)).getOrElse(eventsWithRates)
         options.format.write(events, sink)
       }
