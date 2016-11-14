@@ -57,10 +57,10 @@ object Parser {
     case (gcType, c@Some(gcCause), _, _) if gcCause.startsWith("CMS") => cmsEvent(gcType, c)
     case (gcType, gcCause, typePart2, tenuringDistribution) => basicEvent(gcType + typePart2.getOrElse(""), gcCause, tenuringDistribution)
   }
-  private val TotalAppStoppedTime = "Total time for which application threads were stopped: " ~ Seconds ~ CharsWhile(_ != '\n').? ~ "\n".?
+  private val TotalAppStoppedTime = "Total time for which application threads were stopped: " ~ Seconds ~ " seconds, Stopping threads took: " ~ Seconds ~ " seconds" ~ "\n".?
   private val AppStoppedEvent = ((Timestamp ~ ": ").? ~ Seconds ~ ": " ~ TotalAppStoppedTime).map {
-    case (timestamp, jvmAge, stoppedTime: Double) =>
-      AppPausedEvent(timestamp.orNull, jvmAge, stoppedTime)
+    case (timestamp, jvmAge, (stoppedTime: Double, secondsToStop: Double)) =>
+      AppPausedEvent(timestamp.orNull, jvmAge, stoppedTime, secondsToStop)
   }
 
   val GcLine = ((Timestamp ~ ": ").? ~ Seconds ~ ": " ~/ (CollectionStats | TotalAppStoppedTime)).map {
@@ -68,8 +68,8 @@ object Parser {
       b.copy(time = timestamp.orNull, jvmAgeSeconds = jvmAge)
     case (timestamp, jvmAge, c: CmsGcEvent) =>
       c.copy(time = timestamp.orNull, jvmAgeSeconds = jvmAge)
-    case (timestamp, jvmAge, stoppedTime: Double) =>
-      AppPausedEvent(timestamp.orNull, jvmAge, stoppedTime)
+    case (timestamp, jvmAge, (stoppedTime: Double, secondsToStop: Double)) =>
+      AppPausedEvent(timestamp.orNull, jvmAge, stoppedTime, secondsToStop)
   }
 
   private val GcLog = (GcLine | IgnoredLine).rep

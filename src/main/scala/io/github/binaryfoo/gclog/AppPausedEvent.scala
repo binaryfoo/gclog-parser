@@ -8,7 +8,7 @@ object AppPausedEvent {
   val GcType = "AppStopped"
 }
 
-case class AppPausedEvent(time: DateTime, jvmAgeSeconds: Double, stoppedSeconds: Double) extends GCEvent {
+case class AppPausedEvent(time: DateTime, jvmAgeSeconds: Double, stoppedSeconds: Double, secondsToStop: Double) extends GCEvent {
   override def gcType: String = AppPausedEvent.GcType
 
   override def jvmAgeMillis: Long = (jvmAgeSeconds * 1000).toLong
@@ -19,6 +19,7 @@ case class AppPausedEvent(time: DateTime, jvmAgeSeconds: Double, stoppedSeconds:
     seq += "age" -> jvmAgeSeconds
     seq += "type" -> gcType
     seq += "stoppedSeconds" -> stoppedSeconds.formatted("%f")
+    seq += "secondsToStop" -> secondsToStop.formatted("%f")
     seq
   }
 

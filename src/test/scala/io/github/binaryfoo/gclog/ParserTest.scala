@@ -529,6 +529,8 @@ class ParserTest extends GcLogTest {
     val firstEvent = events.head
     firstEvent.time shouldBe new DateTime(2016, 11, 10, 15, 42, 24, 41, Plus11)
     firstEvent.gcType shouldBe "AppStopped"
+    firstEvent.asInstanceOf[AppPausedEvent].stoppedSeconds shouldBe 0.0001057
+    firstEvent.asInstanceOf[AppPausedEvent].secondsToStop shouldBe 0.0000176
     events(15).time shouldBe new DateTime(2016, 11, 10, 15, 42, 25, 967, Plus11)
     events(15).gcType shouldBe "GC"
     events.size shouldBe 16
